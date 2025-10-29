@@ -1,4 +1,4 @@
-/*select * from c_cust
+﻿/*select * from c_cust
 where custCode in ('ㅇ499', 'ㅂ022', 'ㅇ496', 'ㅇ479', 'ㅇ002');
 select * from e_cust
 where comCode = 'ㄱ121' and custCode in ('ㅇ499', 'ㅂ022', 'ㅇ496', 'ㅇ479', 'ㅇ002');
@@ -1252,7 +1252,8 @@ CROSS APPLY (
 	AND (@i__consignCustCode = '''' 
 	  or _s.consignCustCode = @i__consignCustCode 
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
+	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
 	AND _s.consignCustCode <> ''ㅇ499''
 	AND _s.consignCustCode <> ''ㅂ022''
 	AND _s.consignCustCode <> ''ㅇ479''
