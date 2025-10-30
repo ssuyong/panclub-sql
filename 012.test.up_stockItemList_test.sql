@@ -177,6 +177,13 @@ panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    
 @i__bulkSrchType='itemNo',    @i__itemBulk='2218200959',    @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    @i__noRealYN='N', 
 @i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
 
+--운영:엠케이재고 2218200959
+panErp.dbo.up_stockItemList	@i__workingType='SALE_LIST',    @i__page=0,    @i__qty=0,      
+@i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='', 
+@i__eYmd2='',        @i__storCode='',    @i__itemId=0,    @i__itemNo='',    @i__itemName='',    @i__makerCode='',    @i__classCode='',    @i__storName='',    
+@i__bulkSrchType='itemNo',    @i__itemBulk='2218200959',    @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    @i__noRealYN='N', 
+@i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
+
 --아우토재고 13628650714
 panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    @i__qty=0,      
 @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='', 
@@ -184,12 +191,12 @@ panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    
 @i__bulkSrchType='itemNo',    @i__itemBulk='13628650714',    @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    @i__noRealYN='N', 
 @i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
 
---테스트:아파츠재고 8N0853601A
+--테스트:아파츠재고 테스트테스트
 panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    @i__qty=0,      
 @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='', 
 @i__eYmd2='',        @i__storCode='',    @i__itemId=0,    @i__itemNo='',    @i__itemName='',   
 @i__makerCode='',    @i__classCode='',    @i__storName='',    
-@i__bulkSrchType='itemNo',    @i__itemBulk='8N0853601A',    @i__checkType='ALL',    @i__outStorCode='',    
+@i__bulkSrchType='itemNo',    @i__itemBulk='테스트테스트',    @i__checkType='ALL',    @i__outStorCode='',    
 @i__storageCode='',    @i__noRealYN='N', 
 @i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
 
@@ -1159,12 +1166,7 @@ SET @sql1 = @sql1 + N'
 		AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode 
 			or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
 		and _sr.stockQty > 0
-		AND isnull(_s.consignCustCode,'''') <> ''ㅇ499'' --아우토서울
-		AND isnull(_s.consignCustCode,'''') <> ''ㅂ022'' --VAG 군포
-		AND isnull(_s.consignCustCode,'''') <> ''ㅇ479'' --인터카스 부산
-		AND isnull(_s.consignCustCode,'''') <> ''ㅇ002'' --엠케이 대구
-
-		AND isnull(_s.consignCustCode,'''') <> ''ㅇ496'' --이지통상 남양주
+		AND isnull(_s.consignCustCode,'''') not in (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅇ496'')
 	'
 	--if @i__logUserId = 'zzz'
 	--	SET @sql = @sql + N'	and _s.storageCode <> ''zzz'' '
@@ -1194,21 +1196,18 @@ b.codeName AS makerName
 
 ,dbo.UF_GREATEST(0 ,(ISNULL(str.qtyNewWorkable, 0) 
     - ISNULL(temp.qtyNew,0)  
-    - ISNULL(ca3.qty3,0) 
-	- ISNULL(ca4.qty4,0) 
-	- ISNULL(ca5.qty5,0)  
-	- ISNULL(ca6.qty6,0) 
-	- ISNULL(ca7.qty7,0)
+    - ISNULL(ca3.qty3,0)
 	- ISNULL((select sum(CASE WHEN pli.placeNo IS NOT NULL THEN ISNULL(pli.cnt,0)
 			WHEN pli.placeNo IS NULL THEN ISNULL(s.gvQty,0)
 			ELSE 0  END) qty 
 			from dbo.e_pcReqItem s
 			LEFT OUTER JOIN dbo.e_placeItem pli ON  s.gvComCode = pli.comCode 
 			  AND s.gvPlaceNo = pli.placeNo AND s.gvPlaceSeq = pli.placeSeq 
-			WHERE s.itemId = st.itemId AND 
-			s.comCode = st.comCode  AND	
-			((ISNULL(s.procStep,'''') <> ''거부'') AND 
-			(((ISNULL(s.procStep,'''') <> ''접수'') AND (ISNULL(s.procStep,'''') <> ''처리'')) ) )
+			WHERE s.itemId = st.itemId 
+			  AND s.comCode = st.comCode  
+			  AND ISNULL(s.procStep,'''') <> ''거부'' 
+			  AND ISNULL(s.procStep,'''') <> ''접수'' 
+			  AND ISNULL(s.procStep,'''') <> ''처리''
 		) 
 		,
 		0))) AS qtyNew
@@ -1264,12 +1263,7 @@ CROSS APPLY (
 	AND (@i__consignCustCode = '''' 
 	  or _s.consignCustCode = @i__consignCustCode 
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ499''
-	AND isnull(_s.consignCustCode,'''') <> ''ㅂ022''
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ479''
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ002''
-
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ496''
+	AND isnull(_s.consignCustCode,'''') not in (''ㅇ499'', ''ㅂ022'', ''ㅇ496'', ''ㅇ479'', ''ㅇ002'')	
     
 ) ca1
 
@@ -1284,12 +1278,7 @@ CROSS APPLY (
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
 	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
 	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ499''
-	AND isnull(_s.consignCustCode,'''') <> ''ㅂ022''
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ479''
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ002''
-
-	AND isnull(_s.consignCustCode,'''') <> ''ㅇ496''
+	AND isnull(_s.consignCustCode,'''') not in (''ㅇ499'', ''ㅂ022'', ''ㅇ496'', ''ㅇ479'', ''ㅇ002'')
     
 ) ca2
 
@@ -1304,69 +1293,9 @@ CROSS APPLY (
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
 	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
 	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode = ''ㅇ499''
+	AND _s.consignCustCode in (''ㅇ499'', ''ㅂ022'', ''ㅇ496'', ''ㅇ479'', ''ㅇ002'')
     
 ) ca3
-
-CROSS APPLY (
-	select sum(_sr.stockQty) AS qty4
-	from dbo.e_stockRack _sr
-	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
-	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
-	AND (@i__consignCustCode = '''' 
-	  or _s.consignCustCode = @i__consignCustCode 
-	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
-	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode = ''ㅂ022''
-    
-) ca4
-
-CROSS APPLY (
-	select sum(_sr.stockQty) AS qty5
-	from dbo.e_stockRack _sr
-	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
-	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
-	AND (@i__consignCustCode = '''' 
-	  or _s.consignCustCode = @i__consignCustCode 
-	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
-	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode = ''ㅇ496''
-    
-) ca5
-
-CROSS APPLY (
-	select sum(_sr.stockQty) AS qty6
-	from dbo.e_stockRack _sr
-	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
-	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
-	AND (@i__consignCustCode = '''' 
-	  or _s.consignCustCode = @i__consignCustCode 
-	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
-	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode = ''ㅇ479''
-    
-) ca6
-
-CROSS APPLY (
-	select sum(_sr.stockQty) AS qty7
-	from dbo.e_stockRack _sr
-	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
-	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
-	AND (@i__consignCustCode = '''' 
-	  or _s.consignCustCode = @i__consignCustCode 
-	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
-	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode = ''ㅇ002''
-    
-) ca7
 
 LEFT JOIN dbo.e_item i ON st.itemId = i.itemId
 
