@@ -474,7 +474,7 @@ BEGIN
 		WHERE sr.comCode = @i__logComCode AND   --조건추가 -- 20234.01.08 
 		      r.storageCode = @i__storageCode AND sr.stockQty <> 0
 
-			  and _s.consignCustCode <> 'ㅇ496' --이지통상
+			  and isnull(_s.consignCustCode, '') <> 'ㅇ496' --이지통상
 END
 
 --DECLARE @n__salePriceType varchar(10) = (SELECT ISNULL(salePriceType,'매입가') FROM dbo.e_cust WHERE comCode = 'ㄱ000' AND custCode = @i__logComCode)
@@ -501,7 +501,7 @@ st.uptHms,
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
 	where _sr.itemid = st.itemId and _sr.comCode = st.comCode AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
 	
-	and _s.consignCustCode <> ''ㅇ496''
+	and isnull(_s.consignCustCode, '''') <> ''ㅇ496''
 	
 	
 	'
@@ -518,7 +518,7 @@ SET @sql = @sql + N'
 	where _sr.itemid = st.itemId and _sr.comCode = st.comCode AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
 	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
 	
-	and _s.consignCustCode <> ''ㅇ496''
+	and isnull(_s.consignCustCode, '''') <> ''ㅇ496''
 	
 	'
 --if @i__logUserId = 'zzz'
@@ -531,12 +531,16 @@ IF @i__logComCode in (SELECT comCode FROM dbo.UF_GetGroupComCode((select comCode
 BEGIN
 SET @sql = @sql + N'
 	(
-		SELECT STRING_AGG(''[''+_s.storageName+'']'' + _r.rackName + '' '' +cast(ISNULL( _sr.stockQty,'''') as varchar(100)), '' * '')
+		SELECT STRING_AGG(''[''+_s.storageName+'']'' + _r.rackName + '' '' 
+		  +cast(ISNULL( _sr.stockQty,'''') as varchar(100)), '' * '')
 		from dbo.e_stockRack _sr
 		LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
-		LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode and _s.consignCustCode <> ''ㅇ496''
-		where _sr.itemid = st.itemId and _sr.comCode = st.comCode AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-		and _sr.stockQty > 0
+		LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
+		  and isnull(_s.consignCustCode, '''') <> ''ㅇ496''
+		where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
+		  AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode 
+		    or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
+		  and _sr.stockQty > 0
 
 		
 
@@ -652,11 +656,11 @@ LEFT JOIN (select  _sr.itemId ,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtUsed,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''불량'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyNew,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyUsed,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyRefur
 	from dbo.e_stockRack _sr  
 	left join dbo.e_rack _r on _r.comCode = _sr.comCode  AND _r.rackCode = _sr.rackCode  
@@ -664,7 +668,7 @@ LEFT JOIN (select  _sr.itemId ,
 	where    @n__4carComCode = _sr.comCode  AND @n__4carComCode <> @i__logComCode  
 	
 	
-	and _s.consignCustCode <> ''ㅇ496''
+	and isnull(_s.consignCustCode, '''') <> ''ㅇ496''
 	
 
 	GROUP BY _sr.itemId ) temp ON temp.itemId = st.itemId 
@@ -1140,7 +1144,8 @@ ISNULL(ca1.qty1,0) AS stockQty ,
 ISNULL(ca2.qty2,0) AS workableQty,  
 '
 
-IF @i__logComCode in (SELECT comCode FROM dbo.UF_GetGroupComCode((select comCode from UF_ErpOperate(''))))
+IF @i__logComCode in (SELECT comCode FROM dbo.UF_GetGroupComCode(
+                        (select comCode from UF_ErpOperate(''))))
 BEGIN
 
 SET @sql1 = @sql1 + N'
@@ -1382,19 +1387,19 @@ LEFT JOIN (select  _sr.itemId ,
 	  , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''불량'' 
 	  , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''신품''  
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''신품''  
 	  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') 
 	  OR (_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' 
 	    AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' 
 		AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  )  
 	  , ISNULL(stockQty,0),0)) qtyNew,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''중고''  
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''중고''  
 	  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') 
 	  OR (_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' 
 	    AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' 
 		AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) 
 	  , ISNULL(stockQty,0),0)) qtyUsed,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''리퍼'' 
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''리퍼'' 
 	  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') 
 	  OR (_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' 
 	    AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' 
@@ -1432,7 +1437,8 @@ END
 
 --IF @i__logComCode NOT IN ('ㄱ000','ㄱ121', 'ㅇ413','ㅇ434','ㅇ436', 'ㅇ439', 'ㅋ127')
 --IF @i__logComCode NOT IN (SELECT comCode FROM dbo.UF_GetChildComcode('ㄱ000'))
-IF @i__logComCode NOT IN (SELECT comCode FROM dbo.UF_GetChildComcode(@ErpOperateComCode)) --위에서 이걸로 변경. 2024.10.16 hsg
+--위에서 이걸로 변경. 2024.10.16 hsg
+IF @i__logComCode NOT IN (SELECT comCode FROM dbo.UF_GetChildComcode(@ErpOperateComCode))
 BEGIN
 	SET @sql1 = @sql1 + '	LEFT OUTER JOIN dbo.e_stockItemOuterNonDsp nd ON st.comCode = nd.comCode 
                               AND st.itemId = nd.itemId '
@@ -1486,7 +1492,8 @@ IF @i__noRealYN = 'Y'
 IF @i__qtyZeroYN = 'Y'
 	SET @sql1 = @sql1 + N' AND ISNULL(str.qtyWorkable, 0) <> 0 AND ISNULL(st.stockQty, 0) <> 0 '
 
-IF @i__logComCode NOT IN (SELECT comCode FROM dbo.UF_GetChildComcode(@ErpOperateComCode))   --위에서 이걸로 변경. 2024.10.16 hsg
+--위에서 이걸로 변경. 2024.10.16 hsg
+IF @i__logComCode NOT IN (SELECT comCode FROM dbo.UF_GetChildComcode(@ErpOperateComCode))
 BEGIN
 	SET @sql1 = @sql1 + N' AND	nd.itemId IS NULL'
 END
@@ -1522,7 +1529,7 @@ SET @sql2 = @sql2 + N'
 		  AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode 
 		    or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
 		  and _sr.stockQty > 0
-		  AND _s.consignCustCode = ''ㅇ499''
+		  AND _s.consignCustCode = ''ㅇ499'' --아우토
 	'
 	--if @i__logUserId = 'zzz'
 	--	SET @sql = @sql + N'	and _s.storageCode <> ''zzz'' '
@@ -1558,10 +1565,11 @@ b.codeName AS makerName
 			from dbo.e_pcReqItem s
 			LEFT OUTER JOIN dbo.e_placeItem pli ON  s.gvComCode = pli.comCode 
 			  AND s.gvPlaceNo = pli.placeNo AND s.gvPlaceSeq = pli.placeSeq 
-			WHERE s.itemId = st.itemId AND 
-			s.comCode = st.comCode  AND	
-			((ISNULL(s.procStep,'''') <> ''거부'') AND 
-			(((ISNULL(s.procStep,'''') <> ''접수'') AND (ISNULL(s.procStep,'''') <> ''처리'')) ) )
+			WHERE s.itemId = st.itemId 
+			  AND s.comCode = st.comCode  
+			  AND ((ISNULL(s.procStep,'''') <> ''거부'') 
+			    AND (((ISNULL(s.procStep,'''') <> ''접수'') 
+			      AND (ISNULL(s.procStep,'''') <> ''처리'')) ) )
 		) 
 		, 
 		
@@ -1651,23 +1659,41 @@ CROSS APPLY (
     
 ) ca5
 
-LEFT OUTER JOIN dbo.e_itemCost ic ON st.comCode = ic.comCode AND st.itemId = ic.itemId AND ic.stdYM = REPLACE(st.uptYmd, ''-'','''')
-LEFT OUTER JOIN (SELECT comCode, itemId, MAX(stdYM) stdYM FROM dbo.e_itemCost WHERE comCode = @i__logComCode GROUP BY comCode, itemId) ic2 ON st.comCode = ic2.comCode AND st.itemId = ic2.itemId 
-LEFT OUTER JOIN dbo.e_itemCost ic3 ON ic2.comCode = ic3.comCode AND ic2.itemId = ic3.itemId AND ic2.stdYM = ic3.stdYM
-LEFT OUTER JOIN dbo.e_code b ON st.comCode = b.comCode AND b.mCode=''1000'' AND b.code = i.makerCode
-LEFT OUTER JOIN dbo.e_user u1 ON st.comCode = u1.comCode AND st.regUserId = u1.userId
-LEFT OUTER JOIN dbo.e_user u2 ON st.comCode = u2.comCode AND st.uptUserId = u2.userId
-LEFT OUTER JOIN dbo.vw_storType_stock str ON i.itemId = str.itemId AND st.comCode = str.comCode
+LEFT OUTER JOIN dbo.e_itemCost ic ON st.comCode = ic.comCode 
+  AND st.itemId = ic.itemId AND ic.stdYM = REPLACE(st.uptYmd, ''-'','''')
+LEFT OUTER JOIN (SELECT comCode, itemId, MAX(stdYM) stdYM 
+                 FROM dbo.e_itemCost 
+				 WHERE comCode = @i__logComCode 
+				 GROUP BY comCode, itemId) ic2 
+				 ON st.comCode = ic2.comCode AND st.itemId = ic2.itemId 
+LEFT OUTER JOIN dbo.e_itemCost ic3 ON ic2.comCode = ic3.comCode 
+  AND ic2.itemId = ic3.itemId AND ic2.stdYM = ic3.stdYM
+LEFT OUTER JOIN dbo.e_code b ON st.comCode = b.comCode 
+  AND b.mCode=''1000'' AND b.code = i.makerCode
+LEFT OUTER JOIN dbo.e_user u1 ON st.comCode = u1.comCode 
+  AND st.regUserId = u1.userId
+LEFT OUTER JOIN dbo.e_user u2 ON st.comCode = u2.comCode 
+  AND st.uptUserId = u2.userId
+LEFT OUTER JOIN dbo.vw_storType_stock str ON i.itemId = str.itemId 
+  AND st.comCode = str.comCode
 LEFT JOIN (select  _sr.itemId ,
-	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtNew,
-	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtUsed,
-	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
-	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''불량'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
-	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  )  , ISNULL(stockQty,0),0)) qtyNew,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' 
+	  , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtNew,
+	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' 
+	  , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtUsed,
+	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' 
+	  , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
+	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''불량'' 
+	  , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''신품''  
+	  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') 
+	  OR (_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' 
+	    AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' 
+		AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  )  
+	  , ISNULL(stockQty,0),0)) qtyNew,
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyUsed,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyRefur
 	from dbo.e_stockRack _sr  
 	left join dbo.e_rack _r on _r.comCode = _sr.comCode  AND _r.rackCode = _sr.rackCode  
@@ -1890,8 +1916,8 @@ CROSS APPLY (
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
 	where _sr.itemid = st.itemId and _sr.comCode = st.comCode AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
 	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode <> ''ㅂ022''
-	AND _s.consignCustCode <> ''ㅇ496''
+	AND isnull(_s.consignCustCode, '''') <> ''ㅂ022''
+	AND isnull(_s.consignCustCode, '''') <> ''ㅇ496''
     
 ) ca3
 
@@ -1918,11 +1944,11 @@ LEFT JOIN (select  _sr.itemId ,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtUsed,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''불량'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  )  , ISNULL(stockQty,0),0)) qtyNew,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyUsed,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyRefur
 	from dbo.e_stockRack _sr  
 	left join dbo.e_rack _r on _r.comCode = _sr.comCode  AND _r.rackCode = _sr.rackCode  
@@ -2165,11 +2191,11 @@ LEFT JOIN (select  _sr.itemId ,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtUsed,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''불량'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  )  , ISNULL(stockQty,0),0)) qtyNew,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyUsed,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyRefur
 	from dbo.e_stockRack _sr  
 	left join dbo.e_rack _r on _r.comCode = _sr.comCode  AND _r.rackCode = _sr.rackCode  
@@ -2411,11 +2437,11 @@ LEFT JOIN (select  _sr.itemId ,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtUsed,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''불량'' , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''신품''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  )  , ISNULL(stockQty,0),0)) qtyNew,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''중고''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''중고'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyUsed,
-	sum(IIF((_s.consignCustCode <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
+	sum(IIF((isnull(_s.consignCustCode, '''') <> @i__logComCode  AND _s.storType = ''리퍼''  AND ISNULL(_s.consignViewYN,''N'') <> ''N''  AND @n__isPan3 = ''N'') OR
 	        (_s.consignCustCode = @i__logComCode  AND _s.storType = ''리퍼'' AND ISNULL(_s.rlStandByYN,''N'') = ''N'' AND  ISNULL(_s.workableYN,''N'') = ''Y'' AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) , ISNULL(stockQty,0),0)) qtyRefur
 	from dbo.e_stockRack _sr  
 	left join dbo.e_rack _r on _r.comCode = _sr.comCode  AND _r.rackCode = _sr.rackCode  
