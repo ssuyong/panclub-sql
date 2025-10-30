@@ -184,12 +184,12 @@ panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    
 @i__bulkSrchType='itemNo',    @i__itemBulk='13628650714',    @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    @i__noRealYN='N', 
 @i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
 
---테스트:아파츠재고 테스트테스트
+--테스트:아파츠재고 8N0853601A
 panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    @i__qty=0,      
 @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='', 
 @i__eYmd2='',        @i__storCode='',    @i__itemId=0,    @i__itemNo='',    @i__itemName='',   
 @i__makerCode='',    @i__classCode='',    @i__storName='',    
-@i__bulkSrchType='itemNo',    @i__itemBulk='테스트테스트',    @i__checkType='ALL',    @i__outStorCode='',    
+@i__bulkSrchType='itemNo',    @i__itemBulk='8N0853601A',    @i__checkType='ALL',    @i__outStorCode='',    
 @i__storageCode='',    @i__noRealYN='N', 
 @i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
 
@@ -1192,8 +1192,12 @@ i.salePrice,
 b.codeName AS makerName
 ,u1.userName regUserName ,u1.userName uptUserName
 
-,dbo.UF_GREATEST(0 ,(ISNULL(str.qtyNewWorkable, 0) - ISNULL(temp.qtyNew,0)  
-    - ISNULL(ca3.qty3,0) - ISNULL(ca4.qty4,0) - ISNULL(ca5.qty5,0)  - ISNULL(ca6.qty6,0) 
+,dbo.UF_GREATEST(0 ,(ISNULL(str.qtyNewWorkable, 0) 
+    - ISNULL(temp.qtyNew,0)  
+    - ISNULL(ca3.qty3,0) 
+	- ISNULL(ca4.qty4,0) 
+	- ISNULL(ca5.qty5,0)  
+	- ISNULL(ca6.qty6,0) 
 	- ISNULL(ca7.qty7,0)
 	- ISNULL((select sum(CASE WHEN pli.placeNo IS NOT NULL THEN ISNULL(pli.cnt,0)
 			WHEN pli.placeNo IS NULL THEN ISNULL(s.gvQty,0)
@@ -1313,8 +1317,8 @@ CROSS APPLY (
 	AND (@i__consignCustCode = '''' 
 	  or _s.consignCustCode = @i__consignCustCode 
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' 
-	AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
+	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
 	AND _s.consignCustCode = ''ㅂ022''
     
 ) ca4
@@ -1328,8 +1332,8 @@ CROSS APPLY (
 	AND (@i__consignCustCode = '''' 
 	  or _s.consignCustCode = @i__consignCustCode 
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' 
-	AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
+	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
 	AND _s.consignCustCode = ''ㅇ496''
     
 ) ca5
@@ -1343,8 +1347,8 @@ CROSS APPLY (
 	AND (@i__consignCustCode = '''' 
 	  or _s.consignCustCode = @i__consignCustCode 
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' 
-	AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
+	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
 	AND _s.consignCustCode = ''ㅇ479''
     
 ) ca6
@@ -1358,8 +1362,8 @@ CROSS APPLY (
 	AND (@i__consignCustCode = '''' 
 	  or _s.consignCustCode = @i__consignCustCode 
 	  or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' 
-	AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
+	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
 	AND _s.consignCustCode = ''ㅇ002''
     
 ) ca7
