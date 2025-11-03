@@ -1007,7 +1007,7 @@ FROM (
 				'
 
 				
-IF @i__logComCode = 'ㅍ008'
+IF @i__logComCode = 'ㅍ008' --파츠몰
 	SET @sqlF =  @sqlF + N'   AND @n__4carComCode = sg.comCode  AND sg.consignCoworkCustCode = ''ㅍ008''  '
 ELSE
 	SET @sqlF =  @sqlF + N'   AND sg.consignCustCode = @i__logComCode '
@@ -1243,8 +1243,10 @@ BEGIN
 		SELECT DISTINCT sr.comCode, sr.itemId --, sr.rackCode 
 		FROM e_stockRack sr
 		JOIN dbo.e_rack r ON sr.comCode = r.comCode AND sr.rackCode = r.rackCode
-		WHERE sr.comCode = @i__logComCode AND   --조건추가 -- 2024.01.08 
-		      r.storageCode = @i__storageCode AND sr.stockQty <> 0
+		WHERE sr.comCode = @i__logComCode 
+		--조건추가 -- 2024.01.08 
+		  AND r.storageCode = @i__storageCode 
+		  AND sr.stockQty <> 0
 END
 
 
@@ -1254,7 +1256,7 @@ DECLARE @n__salePriceType3 varchar(10) =
 DECLARE @n__isPan3 VARCHAR(10) = 
 	IIF(@i__logComCode in (SELECT * FROM dbo.UF_GetChildComcode('ㄱ000')),'Y','N')
 -----------------------------------------------------------------------------------------------------------------
---sql1: 5개위탁업체를 제외한 개수를 구하는데 있음.
+--sql1: 자사 재고
 SET @sql1 = N'
 SELECT
 st.idx,
@@ -1372,7 +1374,7 @@ SET @sql1 = @sql1 + N'
 FROM dbo.e_stockItem st 
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty1  --5개위탁업체 제외 전체 수량
+	select sum(_sr.stockQty) AS qty1  --순수 자사 재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1385,7 +1387,7 @@ CROSS APPLY (
 ) ca1
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty2 --5개위탁업체 제외 사용가능수량
+	select sum(_sr.stockQty) AS qty2 --순수 자사 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1400,7 +1402,7 @@ CROSS APPLY (
 ) ca2
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty3 --5개위탁업체 사용가능수량
+	select sum(_sr.stockQty) AS qty3 --5개위탁업체 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1549,7 +1551,7 @@ END
 
 
 -----------------------------------------------------------------------------------------------------------------
---sql2: 아우토 개수를 구하는데 있음.
+--sql2: 아우토 재고
 SET @sql2 = N'
 SELECT
 st.idx,
@@ -1654,7 +1656,7 @@ FROM dbo.e_stockItem st
 LEFT JOIN dbo.e_item i ON st.itemId = i.itemId
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty1 --아우토 총개수
+	select sum(_sr.stockQty) AS qty1 --아우토 재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1666,7 +1668,7 @@ CROSS APPLY (
 ) ca1
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty2 --아우토 사용가능개수
+	select sum(_sr.stockQty) AS qty2 --아우토 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1680,7 +1682,7 @@ CROSS APPLY (
 ) ca2
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty3 --아우토,이지통상 제외 사용가능 개수
+	select sum(_sr.stockQty) AS qty3 --아우토,이지통상 제외 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1695,7 +1697,7 @@ CROSS APPLY (
 ) ca3
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty5 --이지통상 사용가능 개수
+	select sum(_sr.stockQty) AS qty5 --이지통상 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1854,7 +1856,7 @@ BEGIN
 END
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
---sql3: VAG 개수를 구하는데 있음.
+--sql3: VAG 재고
 SET @sql3 = N'
 SELECT
 st.idx,
@@ -1959,7 +1961,7 @@ FROM dbo.e_stockItem st
 LEFT JOIN dbo.e_item i ON st.itemId = i.itemId
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty1 --VAG 총 부품수
+	select sum(_sr.stockQty) AS qty1 --VAG 재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1971,7 +1973,7 @@ CROSS APPLY (
 ) ca1
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty2 --VAG 사용가능 부품수
+	select sum(_sr.stockQty) AS qty2 --VAG 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -1986,25 +1988,37 @@ CROSS APPLY (
 ) ca2
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty3 --VAG,이지통상제외 사용가능 부품수
+	select sum(_sr.stockQty) AS qty3 --VAG,이지통상 제외 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-	where _sr.itemid = st.itemId and _sr.comCode = st.comCode AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND isnull(_s.consignCustCode, '''') <> ''ㅂ022''
-	AND isnull(_s.consignCustCode, '''') <> ''ㅇ496''
+	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
+	 AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode 
+	   or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
+	  and _r.validYN = ''Y'' 
+	  and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	  and _s.validYN = ''Y'' 
+	  AND _s.storType in (''신품'',''중고'',''리퍼'') 
+	  AND _s.workableYN = ''Y''
+	  AND isnull(_s.consignCustCode, '''') <> ''ㅂ022''
+	  AND isnull(_s.consignCustCode, '''') <> ''ㅇ496''
     
 ) ca3
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty5 --이지통상 사용가능 부품수
+	select sum(_sr.stockQty) AS qty5 --이지통상 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-	where _sr.itemid = st.itemId and _sr.comCode = st.comCode AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode = ''ㅇ496''
+	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
+	 AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode 
+	   or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
+	  and _r.validYN = ''Y'' 
+	  and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	  and _s.validYN = ''Y'' 
+	  AND _s.storType in (''신품'',''중고'',''리퍼'') 
+	  AND _s.workableYN = ''Y''
+	  AND _s.consignCustCode = ''ㅇ496''
     
 ) ca5
 
@@ -2156,7 +2170,7 @@ BEGIN
 END
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
---sql4: 인터카스 개수를 구하는데 있음.
+--sql4: 인터카스 재고
 SET @sql4 = N'
 SELECT
 st.idx,
@@ -2169,7 +2183,7 @@ st.uptUserId,
 st.uptYmd,
 st.uptHms, 
 ISNULL(ca1.qty1,0) AS stockQty ,
-ISNULL(ca2.qty2,0) AS workableQty,  
+ISNULL(ca2.qty2,0) AS workableQty,
 '
 
 IF @i__logComCode in (SELECT comCode FROM dbo.UF_GetGroupComCode((select comCode from UF_ErpOperate(''))))
@@ -2261,7 +2275,7 @@ FROM dbo.e_stockItem st
 LEFT JOIN dbo.e_item i ON st.itemId = i.itemId
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty1
+	select sum(_sr.stockQty) AS qty1 --인터카스 재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -2273,7 +2287,7 @@ CROSS APPLY (
 ) ca1
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty2
+	select sum(_sr.stockQty) AS qty2 --인터카스 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -2287,7 +2301,7 @@ CROSS APPLY (
 ) ca2
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty3
+	select sum(_sr.stockQty) AS qty3 --인터카스,이지통상 제외 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -2302,7 +2316,7 @@ CROSS APPLY (
 ) ca3
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty5
+	select sum(_sr.stockQty) AS qty5 --이지통상 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -2471,7 +2485,7 @@ BEGIN
 END
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------ssy
---sql5: 엠케이 개수를 구하는데 있음.
+--sql5: 엠케이 재고
 SET @sql5 = N'
 SELECT
 st.idx,
@@ -2576,7 +2590,7 @@ FROM dbo.e_stockItem st
 LEFT JOIN dbo.e_item i ON st.itemId = i.itemId
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty1
+	select sum(_sr.stockQty) AS qty1 --엠케이 재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -2588,7 +2602,7 @@ CROSS APPLY (
 ) ca1
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty2
+	select sum(_sr.stockQty) AS qty2 --엠케이 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -2603,7 +2617,7 @@ CROSS APPLY (
 ) ca2
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty3
+	select sum(_sr.stockQty) AS qty3 --엠케이,이지통상 제외 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
@@ -2619,13 +2633,19 @@ CROSS APPLY (
 ) ca3
 
 CROSS APPLY (
-	select sum(_sr.stockQty) AS qty5
+	select sum(_sr.stockQty) AS qty5 --이지통상 가용재고
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
 	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-	where _sr.itemid = st.itemId and _sr.comCode = st.comCode AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-	and _r.validYN = ''Y'' and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' and _s.validYN = ''Y'' AND _s.storType in (''신품'',''중고'',''리퍼'') AND _s.workableYN = ''Y''
-	AND _s.consignCustCode = ''ㅇ496''
+	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
+	  AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode 
+	    or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
+	  and _r.validYN = ''Y'' 
+	  and ISNULL(_s.rlStandByYN,''N'') <> ''Y'' 
+	  and _s.validYN = ''Y'' 
+	  AND _s.storType in (''신품'',''중고'',''리퍼'') 
+	  AND _s.workableYN = ''Y''
+	  AND _s.consignCustCode = ''ㅇ496''
     
 ) ca5
 
