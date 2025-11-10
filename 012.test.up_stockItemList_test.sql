@@ -192,7 +192,7 @@ panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    
 @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='', 
 @i__eYmd2='',        @i__storCode='',    @i__itemId=0,    @i__itemNo='',    @i__itemName='',   
 @i__makerCode='',    @i__classCode='',    @i__storName='',    
-@i__bulkSrchType='itemNo',    @i__itemBulk='테스트테스트',    @i__checkType='ALL',    @i__outStorCode='',    
+@i__bulkSrchType='itemNo',    @i__itemBulk='테스트테스트힣13628650714',    @i__checkType='ALL',    @i__outStorCode='',    
 @i__storageCode='',    @i__noRealYN='N', 
 @i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
 
@@ -318,7 +318,7 @@ SET @i__checkType  = ISNULL(@i__checkType,'')
 SET @i__outStorCode  = ISNULL(@i__outStorCode,'')
 SET @i__storageCode  = ISNULL(@i__storageCode,'')
 SET @i__noRealYN  = ISNULL(@i__noRealYN,'')
-SET @i__qtyZeroYN  = 'N'--ISNULL(@i__qtyZeroYN,'')
+SET @i__qtyZeroYN  = ISNULL(@i__qtyZeroYN,'')
 SET @i__consignCustCode  = ISNULL(@i__consignCustCode,'')
 
 
