@@ -678,55 +678,43 @@ join e_storage sg on sg.comCode = sr.comCode
 where sr.comCode = 'ㄱ121'
   --and sr.stockQty > 0
   and ei.itemNo in
-('0065423320',
-'0079975690',
-'03L109244J',
-'13502349',
-'1636336170',
-'165720P150',
-'1666823000',
-'17117639024',
-'1740831080',
-'1745122070',
-'17669808309999',
-'1K0802068',
-'1K0805088A',
-'2034900040',
-'2034900140',
-'2034920144',
-'2034923741',
-'204880022764',
-'206213TA0B',
-'2115280809',
-'23147683',
-'23161039',
-'5835133020',
-'5872342020',
-'5C6821216',
-'5C6823730',
-'5Q0122101S',
-'63832JK500',
-'656211ME0A',
-'6786330140',
-'6863042050',
-'6874033021',
-'6C0805971',
-'6C0971085C',
-'7576607030',
-'758941MA0A',
-'82740AR000',
-'82860JK000',
-'82861JK000',
-'8572033350',
-'9008498036',
-'921174GC0A',
-'921851MA0A',
-'G66903TAMA',
-'G66913TAMA',
-'G67193TAMB',
-'G91833TAMB',
-'N000000008164',
-'SU00300833'
+('1J0941165',
+'33121TA0T11',
+'6766433060',
+'51118065883',
+'1778851500',
+'7L6945120E',
+'91902SB2003',
+'8934833110',
+'98750463500',
+'51127371751',
+'1668851501',
+'6182522050',
+'1745131011',
+'61618220913',
+'24088503239999',
+'31425090',
+'5253750040',
+'0005404705',
+'C2D45820',
+'5N0807241GRU',
+'8E0955975',
+'19168524',
+'8527948020',
+'91651S84A01',
+'2045040514',
+'68254331AA',
+'3D0809937B',
+'5379850010',
+'1J0973202',
+'7P6807186',
+'68254330AA',
+'1648850023',
+'68254331AA',
+'5355753011',
+'8537990K04',
+'5254151010',
+'8U0955665'
 )
 order by ei.itemNo
 
@@ -735,7 +723,7 @@ rackName A1-115 120 125 128 142 147 145
 
 select * from e_rack
 where rackName in ('A1-115', 'A1-120', 'A1-125', 'A1-128', 'A1-142', 
-'A1-144', 'A1-145', 'A1-147')
+'A1-144', 'A1-145', 'A1-147', 'A1-138', 'A1-146', 'A1-148')
 order by rackName ;
 
 select * from e_rack
@@ -799,21 +787,6 @@ where ei.itemNo = '213905240364'
 
 --==========================================
 
-
-select * from vw_storType_stock vw
-join e_item ei on ei.itemId = vw.itemId
-where vw.comCode = 'ㄱ121'
-  and ei.itemNo = '테스트테스트'
-
-  SUM(
-        CASE 
-            WHEN sb.storType='신품' 
-             AND sb.storStandbyYN='N'
-             AND sb.storWorkableYN='Y'
-             AND sb.storCtYN='N'
-             AND sb.rackValidYN='Y'
-            THEN sb.stockQty ELSE 0 END
-    ) AS qtyNewWorkable
 
 SELECT 
         sr.comCode,
@@ -936,3 +909,17 @@ select  _sr.itemId ,
 	  AND @n__4carComCode <> @i__logComCode  
 	 -- and _s.consignCustCode = 'ㅇ499'
 	GROUP BY _sr.itemId 
+
+
+-----------------
+
+--이지통상 물건 랙위치, 수량 확인
+select * from e_stockrack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode 
+  and er.rackCode = sr.rackCode
+join e_storage  sg on sg.comCode = er.comCode 
+  and sg.storageCode = er.storageCode
+where ei.itemNo = '51118092157'
+  and sg.consignCustCode = 'ㅇ496';
+

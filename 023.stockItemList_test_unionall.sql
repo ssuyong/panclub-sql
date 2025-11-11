@@ -8,7 +8,7 @@ DECLARE @n__4carComCode varchar(10) = 'ㄱ121'
 DECLARE @n__salePriceType3 varchar(10) = (SELECT ISNULL(salePriceType,'센터가') FROM dbo.e_cust WHERE comCode = @ErpOperateComCode AND custCode = @i__logComCode) 
 DECLARE @n__isPan3 VARCHAR(10) = IIF(@i__logComCode in (SELECT * FROM dbo.UF_GetChildComcode('ㄱ000')),'Y','N')
 declare @i__itemNo varchar(20) = ''
-,@i__itemBulk varchar(MAX) = '테스트테스트힣2218200959힣13628650714'
+,@i__itemBulk varchar(MAX) = '테스트테스트힣13628650714'
 ,@i__bulkSrchType varchar(20)='itemNo'
 ,@i__logUserId varchar(20) = 'ssuyong'
 ,@i__storageCode varchar(20) = ''
@@ -109,7 +109,7 @@ st.uptUserId,
 st.uptYmd,
 st.uptHms, 
 ISNULL(ca1.qty1,0) AS stockQty ,
-ISNULL(ca2.qty2,0) AS workableQty,  
+ISNULL(ca2.qty2,0) AS workableQty,
 (
 		SELECT STRING_AGG('['+_s.storageName+']' + _r.rackName + ' ' +
 						cast(ISNULL( _sr.stockQty,'') as varchar(100)), ' * ')
@@ -1214,7 +1214,7 @@ INNER JOIN (SELECT srchKeyWord, MIN(idx) idx
   AND @n__4carComCode = st.comCode
   AND i.itemNo LIKE '%'+@i__itemNo+'%'	
 ) T
-WHERE (T.qtyNew > 0 OR T.qtyCtNew > 0)
+--WHERE (T.qtyNew > 0 OR T.qtyCtNew > 0)
 
 --ORDER BY  T.stockRackCode , T.saleRate DESC, T.uptYmd DESC, T.uptHms DESC
 

@@ -1281,13 +1281,18 @@ SET @sql1 = @sql1 + N'
 		SELECT STRING_AGG(''[''+_s.storageName+'']'' + _r.rackName + '' '' +
 						cast(ISNULL( _sr.stockQty,'''') as varchar(100)), '' * '')
 		from dbo.e_stockRack _sr
-		LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode AND _sr.rackCode = _r.rackCode
-		LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode AND _s.storageCode = _r.storageCode 
-		where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
-		AND (@i__consignCustCode = '''' or _s.consignCustCode = @i__consignCustCode 
-			or (_s.consignCustCode is null AND _s.comCode = @i__consignCustCode))
-		and _sr.stockQty > 0
-		AND isnull(_s.consignCustCode,'''') not in (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅇ496'')
+		LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode 
+		  AND _sr.rackCode = _r.rackCode
+		LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode 
+		  AND _s.storageCode = _r.storageCode 
+		where _sr.itemid = st.itemId 
+		  and _sr.comCode = st.comCode 
+		  AND (@i__consignCustCode = '''' 
+		    or _s.consignCustCode = @i__consignCustCode 
+			or (_s.consignCustCode is null 
+			  AND _s.comCode = @i__consignCustCode))
+		  and _sr.stockQty > 0
+		  AND isnull(_s.consignCustCode,'''') not in (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅇ496'')
 	'
 	--if @i__logUserId = 'zzz'
 	--	SET @sql = @sql + N'	and _s.storageCode <> ''zzz'' '
@@ -1318,12 +1323,14 @@ b.codeName AS makerName
 ,dbo.UF_GREATEST(0 ,(ISNULL(str.qtyNewWorkable, 0) 
     - ISNULL(temp.qtyNew,0)  
     - ISNULL(ca3.qty3,0)
-	- ISNULL((select sum(CASE WHEN pli.placeNo IS NOT NULL THEN ISNULL(pli.cnt,0) --주문만 한 상태의 개수
+	- ISNULL((select sum(CASE WHEN pli.placeNo IS NOT NULL THEN ISNULL(pli.cnt,0) --주문만 한 상태
 			WHEN pli.placeNo IS NULL THEN ISNULL(s.gvQty,0)
 			ELSE 0  END) qty 
-			from dbo.e_pcReqItem s
-			LEFT OUTER JOIN dbo.e_placeItem pli ON  s.gvComCode = pli.comCode 
-			  AND s.gvPlaceNo = pli.placeNo AND s.gvPlaceSeq = pli.placeSeq 
+			from dbo.e_pcReqItem s --재고주문
+			LEFT OUTER JOIN dbo.e_placeItem pli --발주(25.6이후 사용안됨)
+			  ON  s.gvComCode = pli.comCode 
+			  AND s.gvPlaceNo = pli.placeNo 
+			  AND s.gvPlaceSeq = pli.placeSeq 
 			WHERE s.itemId = st.itemId 
 			  AND s.comCode = st.comCode  
 			  AND ISNULL(s.procStep,'''') not in (''거부'', ''접수'', ''처리'')
@@ -1419,17 +1426,24 @@ CROSS APPLY (
 LEFT JOIN dbo.e_item i ON st.itemId = i.itemId
 
 LEFT OUTER JOIN dbo.e_itemCost ic ON st.comCode = ic.comCode 
-  AND st.itemId = ic.itemId AND ic.stdYM = REPLACE(st.uptYmd, ''-'','''')
+  AND st.itemId = ic.itemId 
+  AND ic.stdYM = REPLACE(st.uptYmd, ''-'','''')
 LEFT OUTER JOIN (SELECT comCode, itemId, MAX(stdYM) stdYM 
                  FROM dbo.e_itemCost 
                  WHERE comCode = @i__logComCode 
-				 GROUP BY comCode, itemId) ic2 ON st.comCode = ic2.comCode AND st.itemId = ic2.itemId 
+				 GROUP BY comCode, itemId) ic2 ON st.comCode = ic2.comCode 
+				   AND st.itemId = ic2.itemId 
 LEFT OUTER JOIN dbo.e_itemCost ic3 ON ic2.comCode = ic3.comCode 
-  AND ic2.itemId = ic3.itemId AND ic2.stdYM = ic3.stdYM
-LEFT OUTER JOIN dbo.e_code b ON st.comCode = b.comCode AND b.mCode=''1000'' AND b.code = i.makerCode
-LEFT OUTER JOIN dbo.e_user u1 ON st.comCode = u1.comCode AND st.regUserId = u1.userId
-LEFT OUTER JOIN dbo.e_user u2 ON st.comCode = u2.comCode AND st.uptUserId = u2.userId
-LEFT OUTER JOIN dbo.vw_storType_stock str ON i.itemId = str.itemId AND st.comCode = str.comCode
+  AND ic2.itemId = ic3.itemId 
+  AND ic2.stdYM = ic3.stdYM
+LEFT OUTER JOIN dbo.e_code b ON st.comCode = b.comCode 
+  AND b.mCode=''1000'' AND b.code = i.makerCode
+LEFT OUTER JOIN dbo.e_user u1 ON st.comCode = u1.comCode 
+  AND st.regUserId = u1.userId
+LEFT OUTER JOIN dbo.e_user u2 ON st.comCode = u2.comCode 
+  AND st.uptUserId = u2.userId
+LEFT OUTER JOIN dbo.vw_storType_stock str ON i.itemId = str.itemId 
+  AND st.comCode = str.comCode
 LEFT JOIN (select  _sr.itemId ,
 	sum(IIF(_s.consignCustCode = @i__logComCode  AND _s.storType = ''신품'' 
 	  , iif(_s.validYN =''Y'' , ISNULL(stockQty,0),0) , 0)) qtyCtNew,
@@ -1458,13 +1472,18 @@ LEFT JOIN (select  _sr.itemId ,
 	    AND ISNULL(_s.ctStorageYN,''N'') = ''N'' AND ISNULL(_r.validYN ,''N'') = ''Y''  ) 
 	  , ISNULL(stockQty,0),0)) qtyRefur
 	from dbo.e_stockRack _sr  
-	left join dbo.e_rack _r on _r.comCode = _sr.comCode  AND _r.rackCode = _sr.rackCode  
-	left join dbo.e_storage _s on _s.comCode = _r.comCode  AND _s.storageCode = _r.storageCode 
-	where    @n__4carComCode = _sr.comCode  AND @n__4carComCode <> @i__logComCode  
+	left join dbo.e_rack _r on _r.comCode = _sr.comCode  
+	  AND _r.rackCode = _sr.rackCode  
+	left join dbo.e_storage _s on _s.comCode = _r.comCode  
+	  AND _s.storageCode = _r.storageCode 
+	where @n__4carComCode = _sr.comCode  
+	  AND @n__4carComCode <> @i__logComCode  
 	  and isnull(_s.consignCustCode,'''') not in (''ㅇ499'', ''ㅂ022'', ''ㅇ496'', ''ㅇ479'', ''ㅇ002'')
 	GROUP BY _sr.itemId ) temp ON temp.itemId = st.itemId 
 LEFT JOIN dbo.e_code cd1 ON cd1.comCode = i.comCode
-  AND cd1.mCode = ''1100'' AND cd1.code = i.classCode AND cd1.validYN = ''Y''
+  AND cd1.mCode = ''1100'' 
+  AND cd1.code = i.classCode 
+  AND cd1.validYN = ''Y''
 
 '
 
