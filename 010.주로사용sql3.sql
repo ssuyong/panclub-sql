@@ -919,7 +919,7 @@ join e_rack er on er.comCode = sr.comCode
   and er.rackCode = sr.rackCode
 join e_storage  sg on sg.comCode = er.comCode 
   and sg.storageCode = er.storageCode
-where ei.itemNo = '51118092157'
+where ei.itemNo = '테스트테스트'
   and sg.consignCustCode = 'ㅇ496';
 
 select * from e_storage sg
@@ -958,4 +958,25 @@ where sr.stockQty <> 0
   and ei.itemNo = '32399081'
 
   --------------------------------------------------
-  
+  select * from e_cust
+  where custName like '보스카%'
+
+보스카통상 ㅂ184 재고 업로드
+
+SELECT * from e_rack er
+join e_storage sg on sg.comCode = er.comCode
+  and sg.storageCode = er.storageCode
+  and sg.consignCustCode in( 'ㅂ184', 'ㅌ089')
+
+  랙:대구2 1326
+  창고:있음.ㅂ184
+  기본랙:대구2
+
+
+SELECT * from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode
+  and er.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = er.comCode
+  and sg.storageCode = er.storageCode
+where ei.itemNo = '4M8853970DGRU'
