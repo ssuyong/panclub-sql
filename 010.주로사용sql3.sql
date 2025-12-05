@@ -38,13 +38,21 @@ kill 54;
 ------------------------------------
 --속도개선 인덱스 생성(100배이상 빨라짐)
 /*
+DROP INDEX ssy_IX_stockRack_item ON dbo.e_stockRack;
+
 CREATE INDEX ssy_IX_stockRack_item
   ON dbo.e_stockRack(comCode, itemId)
-  INCLUDE (stockQty, rackCode);
+  INCLUDE (rackCode, stockQty);
 
+CREATE NONCLUSTERED INDEX IX_e_stockRack__rackCode
+ON dbo.e_stockRack (comCode, rackCode)
+INCLUDE (itemId, stockQty);
+--
+drop index ssy_IX_storage_consign on dbo.e_storage;
 CREATE INDEX ssy_IX_storage_consign
   ON dbo.e_storage(comCode, storageCode)
-  INCLUDE (workableYN, validYN, consignCustCode);
+  INCLUDE (consignCustCode, storType, validYN, workableYN, rlStandByYN,
+         ctStorageYN, consignViewYN);
 
 CREATE INDEX ssy_IX_otherSaleRate
   ON dbo.e_otherSaleRate(comCode, custCode, itemId)
@@ -59,13 +67,23 @@ CREATE NONCLUSTERED INDEX ssy_IX_e_stockItem_comCode_itemId
 ON dbo.e_stockItem (comCode, itemId)
 INCLUDE (stockQty);
 
+drop INDEX ssy_IX_e_pcReqItem_itemId_procStep on dbo.e_pcReqItem
+
 CREATE NONCLUSTERED INDEX ssy_IX_e_pcReqItem_itemId_procStep
-ON dbo.e_pcReqItem (itemId, procStep)
-INCLUDE (gvQty, comCode);
+ON dbo.e_pcReqItem (comCode, itemId, procStep)
+INCLUDE (gvComCode, gvPlaceNo, gvPlaceSeq, gvQty);
 
 --불필요한 인덱스 삭제
 --원본: CREATE INDEX [IX_e_placeItem_placeNo] ON [dbo].[e_placeItem]([placeNo])
 	  drop index IX_e_placeItem_placeNo ON dbo.e_placeItem;
+
+CREATE NONCLUSTERED INDEX IX_e_item_itemNo
+ON dbo.e_item (itemNo)
+INCLUDE (itemId, comCode, itemName, makerCode);
+
+CREATE NONCLUSTERED INDEX IX_e_item_itemId
+ON dbo.e_item (itemId)
+INCLUDE (itemNo, comCode, itemName, makerCode);
 */
 
 --별 차이 없음.
@@ -109,8 +127,8 @@ where created >= '2025-10-20'
   and params like '%엠케이%'
 order by created desc;
 
---결론: 엠케이 삽입후 up_reqItemList에서도 엠케이 추가해야 함.
---신규 위탁시: up_stockItemList,up_reqItemList,수탁업체매입율 등록!!!
+--결론: 엠케이 삽입후 up_pcReqItemList에서도 엠케이 추가해야 함.
+--신규 위탁시: up_stockItemList,up_pcReqItemList,창고,기본랙,랙,수탁업체매입율 등록!!!
 
 ---------------------------------------
 
@@ -671,27 +689,19 @@ where logisRackId = '3189'
 select ei.itemNo, sr.rackCode, stockQty
 from e_stockRack sr
 join e_item ei on ei.itemId = sr.itemId
-join e_rack r on r.comCode = sr.comCode 
-  and r.rackCode = sr.rackCode
-join e_storage sg on sg.comCode = sr.comCode
-  and sg.storageCode = r.storageCode
-  and sg.consignCustCode = 'ㅇ496'
-where sr.comCode = 'ㄱ121'
-  --and sr.stockQty > 0
+join e_rack r on r.comCode = sr.comCode and r.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = sr.comCode and sg.storageCode = r.storageCode
+ -- and sg.consignCustCode = 'ㅇ496'
+where sr.comCode = 'ㄱ121' 
+  and sr.stockQty > 0 
   and ei.itemNo in
 (
-'447905180480',
-'963023U203',
-'2228853721',
-'1778801100',
-'5214633060',
-'5K0857508AF9B9',
-'4G0890905'
+'51127387328'
 )
 order by ei.itemNo
 
 select * from e_item
-where itemNo like '971861531A6B0'
+where itemNo like '74195T2GA11'
 
 select * from e_rack
 where memo = '통'
@@ -711,20 +721,58 @@ join e_rack r on r.comCode = sr.comCode and r.rackCode = sr.rackCode
 join e_storage sg on sg.comCode = r.comCode and sg.storageCode = r.storageCode
 where sr.comCode = 'ㄱ121'
   and sg.consignCustCode = 'ㅇ496'
-  and ei.itemNo in ('963023U203',
-'2228853721',
-'1778801100',
-'5214633060',
-'5K0857508AF9B9',
-'4G0890905')
+  and sr.stockQty > 0
+
+select *
+from e_stockItem sr
+join e_item ei on ei.itemId = sr.itemId
+where sr.comCode = 'ㄱ121'
+  and ei.itemNo in ('2115401717')
 
 select * from e_rack er
 join e_storage sg on sg.storageCode = er.storageCode
 where er.rackCode = '1348'
+
+select sum(sr.stockQty * ei.centerPrice) total --32,663,165
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack r on r.comCode = sr.comCode and r.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = r.comCode and sg.storageCode = r.storageCode
+where sr.comCode = 'ㄱ121'
+  and sg.consignCustCode = 'ㅇ496'
+  and sr.stockQty > 0
+  and r.rackName > 'A2-11'
+  and r.rackName < 'A2-14'
+
+select *
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack r on r.comCode = sr.comCode and r.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = r.comCode and sg.storageCode = r.storageCode
+where sr.comCode = 'ㄱ121'
+  and sg.consignCustCode = 'ㅇ496'
+  and sr.stockQty > 0
+  and r.rackName > 'A2-11'
+  and r.rackName < 'A2-14'
+
+--재고위치 재고현황
+select *
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack r on r.comCode = sr.comCode and r.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = r.comCode and sg.storageCode = r.storageCode
+where sr.comCode = 'ㄱ121'
+  and ei.itemNo = '9046707201'
+
+  select * from e_pcReqItem pr
+  join e_item ei on ei.itemId = pr.itemId
+  where ei.itemNo = '9046707201'
+
+
 /*
 select *
 from e_rack
-where rackCode = 1348
+where rackCode = 535
   and comCode = 'ㄱ121'--' A2-110 '
 
 select * 
@@ -824,77 +872,6 @@ SELECT
         sg.validYN, sg.workableYN, sg.rlStandByYN, 
         sg.ctStorageYN, r.validYN
 
---stockItemList에서 사용되는 temp
-DECLARE @ErpOperateComCode varchar(50) =  ''
-SELECT @ErpOperateComCode= comCode from dbo.UF_ErpOperate('')
-declare @i__logComCode varchar(100) = 'ㄱ121'--(SELECT top 1 comCode FROM dbo.UF_GetGroupComCode((select comCode from UF_ErpOperate(''))))
-        , @i__consignCustCode varchar(100) = ''
-DECLARE @n__salePriceType varchar(10) = (SELECT ISNULL(salePriceType,'센터가') FROM dbo.e_cust WHERE comCode = @ErpOperateComCode AND custCode = @i__logComCode) 
-DECLARE @n__isPan VARCHAR(10) = IIF(@i__logComCode in (SELECT * FROM dbo.UF_GetChildComcode('ㄱ000')),'Y','N')
-DECLARE @n__4carComCode varchar(10) = 'ㄱ121'
-DECLARE @n__salePriceType3 varchar(10) = (SELECT ISNULL(salePriceType,'센터가') FROM dbo.e_cust WHERE comCode = @ErpOperateComCode AND custCode = @i__logComCode) 
-DECLARE @n__isPan3 VARCHAR(10) = IIF(@i__logComCode in (SELECT * FROM dbo.UF_GetChildComcode('ㄱ000')),'Y','N')
-declare @i__itemNo varchar(20) = '테스트테스트'
-
-select  _sr.itemId ,
-	sum(IIF(_s.consignCustCode = @i__logComCode  
-	  AND _s.storType = '신품' 
-	  , iif(_s.validYN ='Y' , ISNULL(stockQty,0),0) , 0)) qtyCtNew,
-	sum(IIF(_s.consignCustCode = @i__logComCode  
-	  AND _s.storType = '중고' 
-	  , iif(_s.validYN ='Y' , ISNULL(stockQty,0),0) , 0)) qtyCtUsed,
-	sum(IIF(_s.consignCustCode = @i__logComCode  
-	   AND _s.storType = '리퍼' 
-	  , iif(_s.validYN ='Y' , ISNULL(stockQty,0),0) , 0)) qtyCtRefur,
-	sum(IIF(_s.consignCustCode = @i__logComCode  
-	   AND _s.storType = '불량' 
-	  , iif(_s.validYN ='Y' , ISNULL(stockQty,0),0) , 0)) qtyCtBad ,
-	sum(IIF((isnull(_s.consignCustCode, '') <> @i__logComCode 
-	--로그인업체와 보유업체가 다르고 신품이고 불량창고인 경우나,
-	  AND _s.storType = '신품'  
-	  AND ISNULL(_s.consignViewYN,'N') <> 'N' --Y:불량창고 
-	  AND @n__isPan3 = 'N') 
-	  OR (_s.consignCustCode = @i__logComCode 
-	  --로그인업체와 보유업체가 같을때 신품 가용재고
-	    AND _s.storType = '신품' 
-	    AND ISNULL(_s.rlStandByYN,'N') = 'N' 
-		AND  ISNULL(_s.workableYN,'N') = 'Y' 
-		AND ISNULL(_s.ctStorageYN,'N') = 'N' 
-		AND ISNULL(_r.validYN ,'N') = 'Y'  )  
-	  , ISNULL(stockQty,0),0)) qtyNew,
-	sum(IIF((isnull(_s.consignCustCode, '') <> @i__logComCode  
-	  AND _s.storType = '중고'  
-	  AND ISNULL(_s.consignViewYN,'N') <> 'N' 
-	  AND @n__isPan3 = 'N') 
-	  OR (_s.consignCustCode = @i__logComCode  
-	    AND _s.storType = '중고' 
-	    AND ISNULL(_s.rlStandByYN,'N') = 'N' 
-		AND  ISNULL(_s.workableYN,'N') = 'Y' 
-		AND ISNULL(_s.ctStorageYN,'N') = 'N' 
-		AND ISNULL(_r.validYN ,'N') = 'Y'  ) 
-	  , ISNULL(stockQty,0),0)) qtyUsed,
-	sum(IIF((isnull(_s.consignCustCode, '') <> @i__logComCode  
-	  AND _s.storType = '리퍼'  
-	  AND ISNULL(_s.consignViewYN,'N') <> 'N'  
-	  AND @n__isPan3 = 'N') 
-	  OR (_s.consignCustCode = @i__logComCode  
-	    AND _s.storType = '리퍼' 
-	    AND ISNULL(_s.rlStandByYN,'N') = 'N' 
-		AND  ISNULL(_s.workableYN,'N') = 'Y' 
-		AND ISNULL(_s.ctStorageYN,'N') = 'N' 
-		AND ISNULL(_r.validYN ,'N') = 'Y'  ) 
-	  , ISNULL(stockQty,0),0)) qtyRefur
-	from dbo.e_stockRack _sr  
-	join e_item ei on ei.itemId = _sr.itemId
-	left join dbo.e_rack _r on _r.comCode = _sr.comCode  
-	  AND _r.rackCode = _sr.rackCode  
-	left join dbo.e_storage _s on _s.comCode = _r.comCode  
-	  AND _s.storageCode = _r.storageCode 
-	where    1=1--@n__4carComCode = _sr.comCode  
-	  --AND @n__4carComCode <> @i__logComCode  
-	  and isnull(_s.consignCustCode,'') not in ('ㅇ496')
-	  and ei.itemNo = '테스트테스트'
-	GROUP BY _sr.itemId;
 
 select comCode, storageName, consignViewYN
 from e_storage 
@@ -1033,6 +1010,7 @@ join e_storage  sg on sg.comCode = er.comCode
   and sg.storageCode = er.storageCode
 where sg.consignCustCode = 'ㅇ496'
 group by sg.storageName
+
 
 ---------------------------------------
 --품번별 재고위치 파악
@@ -1233,4 +1211,595 @@ where sr.stockQty <> 0
 join e_storage sg on sg.comCode = er.comCode
   and sg.storageCode = er.storageCode
   where sg.consignCustCode = 'ㅈ011'
-  
+
+
+  -----------------------
+
+  --=-------------------------------------
+--2025-11-26 박스이동후 남은 이지통상 물건
+select sg.storageName, sum(sr.stockQty * ei.centerPrice) --666,855,934.00
+from e_stockrack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode 
+  and er.rackCode = sr.rackCode
+join e_storage  sg on sg.comCode = er.comCode 
+  and sg.storageCode = er.storageCode
+where sg.consignCustCode = 'ㅇ496'
+  and sr.stockQty > 0
+group by sg.storageName
+
+select *
+from e_stockrack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode 
+  and er.rackCode = sr.rackCode
+join e_storage  sg on sg.comCode = er.comCode 
+  and sg.storageCode = er.storageCode
+where sg.consignCustCode = 'ㅇ496'
+  and sr.stockQty > 0
+
+--이지통상에서 이동한 물건
+select sum(sr.stockQty * ei.centerPrice) tot--312,329,823.00
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack r on r.comCode = sr.comCode 
+  and r.rackCode = sr.rackCode
+  and r.memo = '통'
+where sr.stockQty > 0
+
+-- 이지통상 건수
+select sum(sr.stockQty) --11,643개 -> 4,967
+  from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack r on r.comCode = sr.comCode and r.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = r.comCode and sg.storageCode = r.storageCode
+where sr.comCode = 'ㄱ121'
+  and sg.consignCustCode = 'ㅇ496'
+
+--9억에서 3억 정도 이동됐네... 아직 6억어치가 남았어.
+
+  --=-------------------------------------
+
+/*
+SET STATISTICS TIME, IO ON;--0초
+exec 
+panErp.dbo.up_stockItemList	@i__workingType='SALE_LIST',    
+@i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',    
+@i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
+@i__itemId=0,    @i__itemNo='',    @i__itemName='',    @i__makerCode='',    
+@i__classCode='',    @i__storName='',      @i__bulkSrchType='itemNo',    
+@i__itemBulk='07119904448힣4M0816421D힣01292317853힣07147201307힣11127582245힣07119905032',   
+@i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    
+@i__noRealYN='N',    @i__qtyZeroYN='N',    @i__consignCustCode='',      
+@i__logComCode='ㅌ089',    @i__logUserId='테스트'
+SET STATISTICS TIME, IO OFF;
+
+*/
+
+
+
+3Q0919275A9B9
+
+select * from e_saleItem si
+join e_item ei on ei.itemId = si.itemId 
+where ei.itemNo = '3Q0919275A9B9'
+  and si.regYmd = '2025-11-28'
+
+3Q0919275A9B9
+
+select * from e_saleItem si
+join e_item ei on ei.itemId = si.itemId 
+where ei.itemNo = '3Q0919275A9B9'
+  and si.regYmd = '2025-12-01'
+  and si.comCode = 'ㅈ011'
+
+
+
+
+
+  panErp.dbo.up_transactionList	@i__workingType='WHLIST',    @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='2025-11-01',      @i__eYmd1='2025-12-01',      @i__sYmd2='',    @i__eYmd2='',    @i__logComCode='ㄱ121',    @i__logUserId='ssuyong',    @i__clType='',    @i__ledgType='',    @i__placeYmdYN='N',    @i__custOrderNo='',     @i__itemId=0,    @i__itemNo ='',    @i__orderGroupId ='',    @i__carNo ='',   @i__srCode ='',   @i__taxBillRegYN ='',   @i__mainYN ='N',       @i__custCode='ㅈ011'
+
+
+  select * from e_stockActions
+  where itemId = '2544626'
+  order by idx desc
+
+
+  select * from e_cust
+  where custName like '%부품인%'--ㅂ186
+
+--------------------------------------
+--3Q0919275A9B9 매입처 입고날자 변경 12-01=>11-28 S
+--------------------------------------
+  select * from e_saleItem si
+join e_item ei on ei.itemId = si.itemId 
+where ei.itemNo = '3Q0919275A9B9'
+  and si.regYmd = '2025-12-01'
+  and si.comCode = 'ㅈ011'
+
+
+  begin tran
+
+    update si
+	set si.regYmd = '2025-11-28'
+	from e_saleItem si
+join e_item ei on ei.itemId = si.itemId 
+where ei.itemNo = '3Q0919275A9B9'
+  and si.regYmd = '2025-12-01'
+  and si.comCode = 'ㅈ011'
+
+  rollback tran
+  commit tran
+
+--------------------------------------
+--3Q0919275A9B9 매입처 입고날자 변경 12-01=>11-28 E
+--------------------------------------
+
+
+--부품이동(부품인 테스트를 위해)
+
+select * from e_stockrack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode 
+  and er.rackCode = sr.rackCode
+join e_storage  sg on sg.comCode = er.comCode 
+  and sg.storageCode = er.storageCode
+where ei.itemNo = '66209270495' -- 577랙 1188개
+
+
+--창고사용완료할때 404에러
+--서버에 localhost.2025-12-01.log 에 pk중복에러 발생:중복키를 임의 변경처리함.
+select *
+from e_rack er 
+join e_storage sg on sg.storageCode = er.storageCode and sg.comCode = er.comCode
+where sg.consignCustCode = 'ㅈ011'
+
+
+  select * from _spLog
+  where params like '%ssuyong%'
+    and created >= '2025-12-01'
+  order by created desc;
+
+  panErp.dbo.up_storageUseReqItemAdd	@i__workingType='CHK',      @i__storageUseReqNo='',    
+  @i__reqSeq='',    @i__orderNo='',    @i__orderSeq='',    @i__cnt='0',    @i__ordArr='',    
+  @i__seqArr='',    @i__scdArr='',    @i__cntArr='',    
+  @i__reqArr='20251201015^20251201015^20251201015^20251201015^20251201015^20251201015^',    
+  @i__rseArr='1^2^3^4^5^6^',    @i__mm1Arr='',    @i__mm2Arr='',    @i__rackArr='',    
+  @i__afterRackCode='1',    @i__consignItemArr='',    @i__logisCodeArr='',      
+  @i__logUserId='ssuyong',    @i__logComCode='ㄱ121' 	2025-12-01 14:29:58.350
+
+
+  panErp.dbo.up_storageUseReqItemAdd	@i__workingType='CHK',      @i__storageUseReqNo='',    
+  @i__reqSeq='',    @i__orderNo='',    @i__orderSeq='',    @i__cnt='0',    @i__ordArr='',    
+  @i__seqArr='',    @i__scdArr='',    @i__cntArr='',    
+  @i__reqArr='20251201030^20251201030^20251201030^20251201030^20251201030^20251201030^',    
+  @i__rseArr='1^2^3^4^5^6^',    @i__mm1Arr='',    @i__mm2Arr='',    @i__rackArr='',    
+  @i__afterRackCode='1',    @i__consignItemArr='',    @i__logisCodeArr='',      
+  @i__logUserId='ssuyong',    @i__logComCode='ㄱ121'
+
+
+  중복 키 값은 (ㅈ011, 20251201002, 1)입니다
+
+  select * from e_storageUseReqItem
+  where comCode = 'ㅈ011'
+    and storageUseReqNo = '20251201002'
+	and reqSeq = '1'
+
+	select * from e_storageUseReqItem
+	order by chkDate desc;
+
+
+select * from e_saleItem
+where comCode = 'ㅈ011'
+  and saleNo = '20251201002'
+  --and saleSeq = 1
+order by idx desc;
+
+--update e_saleItem
+set saleNo = '20251201002zzz'
+where comCode = 'ㅈ011'
+  and saleNo = '20251201002'
+
+select * from e_saleItem
+where comCode = 'ㅈ011'
+  and saleNo like '20251201002%'
+  --and saleSeq = 1
+order by idx desc;
+
+-----------------------------------------------
+-----------------------------------------------
+
+
+
+
+select 
+	sum(case when _s.consignCustCode = v.consignCustCode then _sr.stockQty else 0 end) AS qty1, --위탁업체 재고
+	sum(case when _s.consignCustCode = v.consignCustCode 
+	  and ISNULL(_s.rlStandByYN,'N') <> 'Y' 
+	  and _r.validYN = 'Y' 
+	  and _s.validYN = 'Y' 
+	  AND _s.workableYN = 'Y'
+	  AND _s.storType in ('신품','중고','리퍼') 
+	  then _sr.stockQty else 0 end) AS qty2, --위탁업체 가용재고
+	sum(case when ISNULL(_s.consignCustCode,'') NOT IN (v.excludeSelf, v.excludeOther)
+	  and ISNULL(_s.rlStandByYN,'N') <> 'Y' 
+	  and _r.validYN = 'Y' 
+	  and _s.validYN = 'Y' 
+	  AND _s.workableYN = 'Y'
+	  AND _s.storType in ('신품','중고','리퍼') 	  
+	  then _sr.stockQty else 0 end) AS qty3, --위탁업체,이지통상 제외 가용재고
+    sum(case when _s.consignCustCode = 'ㅇ496'
+	  and ISNULL(_s.rlStandByYN,'N') <> 'Y' 
+	  and _r.validYN = 'Y' 
+	  and _s.validYN = 'Y' 
+	  AND _s.workableYN = 'Y'
+	  AND _s.storType in ('신품','중고','리퍼') 	  
+	  then _sr.stockQty else 0 end) AS qty5, --이지통상 가용재고
+	STRING_AGG(
+        '[' + _s.storageName + ']' + _r.rackName + ' ' 
+		+ CAST(_sr.stockQty AS VARCHAR(20)),
+        ' * '
+    ) AS locaMemo
+	  
+	from dbo.e_stockRack _sr
+	join e_stockItem st on st.comCode = _sr.comCode and st.itemId = _sr.itemId	
+	join e_item ei on ei.itemId = _sr.itemId
+JOIN (
+    VALUES
+        ('ㅇ499','ㅇ499','ㅇ496'),
+        ('ㅂ022','ㅂ022','ㅇ496'),
+        ('ㅇ479','ㅇ479','ㅇ496'),
+        ('ㅇ002','ㅇ002','ㅇ496'),
+        ('ㅂ184','ㅂ184','ㅇ496'),
+		('ㅈ011','ㅈ011','ㅇ496'),
+		('ㅂ186','ㅂ186','ㅇ496')
+) v(consignCustCode, excludeSelf, excludeOther)
+    ON 1 = 1
+	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode 
+	  AND _sr.rackCode = _r.rackCode
+	LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode 
+	  AND _s.storageCode = _r.storageCode	  
+	where _sr.itemid = st.itemId and _sr.comCode = st.comCode 
+	  and ei.itemNo = '4K0807283'
+
+
+select *
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCOde = sr.comCode
+  and er.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = er.comCode
+  and sg.storageCode = er.storageCode
+  and sg.consignCustCode = 'ㅂ186'
+where ei.itemNo = '4K0807283'
+
+
+-----------------------------------------------------
+--센터가 업데이트
+
+select * from bmw_centerPrice
+
+select * from e_item
+where itemNo = '90200007533';
+
+
+select ei.itemNo, bm.centerPrice bmPrice, ei.centerPrice itemPrice
+from e_item ei
+join bmw_centerPrice bm on bm.itemNo = ei.itemNo
+--where bm.centerPrice != ei.centerPrice
+where bm.centerPrice != ei.salePrice
+
+
+SELECT  
+    s.name  AS SchemaName,
+    t.name  AS TableName,
+    c.name  AS ColumnName
+FROM sys.columns c
+JOIN sys.tables  t ON c.object_id = t.object_id
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE c.name = 'centerPrice'
+ORDER BY s.name, t.name;
+
+begin tran
+update ei
+set ei.centerPrice = bm.centerPrice
+  , ei.salePrice = bm.centerPrice
+from e_item ei
+join bmw_centerPrice bm on bm.itemNo = ei.itemNo
+  where bm.centerPrice != ei.centerPrice
+
+rollback tran
+commit tran
+
+------------------------------------------------------------
+-- 2025-12-02 이지통상(250211002) A2-11 ~ A2-13 랙을 아파츠(250214001)로 변경
+------------------------------------------------------------
+
+select *
+from e_rack
+where storageCode = '250211002'--250211002:이지통상
+  and rackName > 'A2-11'
+  and rackName < 'A2-14'
+order by rackName ;
+
+select * from e_storage --아파츠 창고
+where storageCode = '250214001'
+
+--실행: A2-01~A2-09.. 이지통상->아파츠로 변경
+begin tran
+update e_rack
+set storageCode = '250214001' --250214001:아파츠
+  , modified = getDate()
+where storageCode = '250211002'--250211002:이지통상
+  and rackName > 'A2-11'
+  and rackName < 'A2-14'
+
+rollback tran
+
+commit tran
+
+--변경내역!!!!
+select sr.itemId, sg.storageName, er.rackName, sum(sr.stockQty) 
+from e_stockrack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode 
+  and er.rackCode = sr.rackCode
+join e_storage  sg on sg.comCode = er.comCode 
+  and sg.storageCode = er.storageCode
+where sg.consignCustCode = 'ㅇ495'
+  --and sr.stockQty > 0
+  and rackName > 'A2-11'
+  and rackName < 'A2-14'
+  and cast(er.modified as date) = '2025-12-02'
+group by  sr.itemId, sg.storageName, er.rackName
+
+--A2-11 ~ A2-13 재고자산: 
+select sg.storageName, sum(sr.stockQty * ei.centerPrice) --32,663,165.00
+from e_stockrack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode 
+  and er.rackCode = sr.rackCode
+join e_storage  sg on sg.comCode = er.comCode 
+  and sg.storageCode = er.storageCode
+where sg.consignCustCode = 'ㅇ495'
+  and sr.stockQty > 0
+  and rackName > 'A2-11'
+  and rackName < 'A2-14'
+  and cast(er.modified as date) = '2025-12-02'
+group by  sg.storageName
+
+------------------------------------------------------------
+--매입처 거래 상세내역에 택배비 녹여달라? 택배비 7100원
+select 7100/1.1
+select * from e_saleItem
+where comCode = 'ㅇ479'
+  and saleNo = '20251202001'
+order by idx desc;
+
+select * from e_saleItem
+where saleNo = '20251202001'
+
+begin tran
+update e_saleItem
+set memo1 = '운송비(7100)포함(54,400+6,455)'
+where comCode = 'ㅇ479'
+  and saleNo = '20251202001'
+
+rollback tran
+commit tran
+
+
+6455
+select 54400+6455
+
+begin tran
+update e_saleItem
+set costPrice = 54400+6455,
+  saleUnitPrice = 54400+6455
+where comCode = 'ㅇ479'
+  and saleNo = '20251202001'
+
+  rollback tran
+
+  commit tran
+
+54400+택배비
+
+
+
+6455
+ 645
+
+ select * from e_saleItem
+ where memo1 like '운송비%'
+
+------------------------------------------------------------
+
+select sum(sr.stockQty * ei.centerPrice) --637,185,169
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode
+  and er.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = er.comCode
+  and sg.storageCode = er.storageCode
+where sg.consignCustCode = 'ㅇ496'
+  and sr.stockQty > 0
+
+
+select sg.storageName, ei.itemNo, ei.itemName, ei.centerPrice, sr.stockQty, (ei.centerPrice*sr.stockQty) totPrice, er.rackName
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join e_rack er on er.comCode = sr.comCode
+  and er.rackCode = sr.rackCode
+join e_storage sg on sg.comCode = er.comCode
+  and sg.storageCode = er.storageCode
+where sg.consignCustCode = 'ㅇ496'
+  and sr.stockQty > 0
+  and ei.itemNo != '테스트테스트'
+
+  --------------------------------------
+-- 매입처 입고날자 변경 11-27,28 =>12-01 S
+51117332684
+1615068280
+--------------------------------------
+  select * from e_saleItem si
+join e_item ei on ei.itemId = si.itemId 
+where ei.itemNo in( '51117332684', '1615068280')
+  --and si.regYmd = '2025-12-01'
+  and si.comCode = 'ㅂ184'
+
+
+  begin tran
+
+    update si
+	set si.regYmd = '2025-12-01'
+	from e_saleItem si
+join e_item ei on ei.itemId = si.itemId 
+where ei.itemNo in( '51117332684', '1615068280')
+  --and si.regYmd = '2025-12-01'
+  and si.comCode = 'ㅂ184'
+
+  rollback tran
+  commit tran
+
+--------------------------------------
+--3Q0919275A9B9 매입처 입고날자 변경 12-01=>11-28 E
+--------------------------------------
+
+-----------------------------------------------
+--매입처 상세내역 삭제: 제파꺼 대신 우리꺼 납품했는데 제파내역에 남아있다. 삭제해달라.
+select * from e_saleItem si
+join e_item ei on ei.itemId = si.itemId
+where saleNo = '20251203006'
+  and ei.itemNo = '5Q09191339B9'
+
+
+  begin tran 
+ --1.내역 d_saleItem로 옮겨놓고
+	insert into  d_saleItem([deleted], [delUserId], [comCode], [saleNo], [saleSeq], [saleType], [plComCode], [plPlaceNo], [plPlaceSeq], [puComCode], [itemId], [qty], [salePriceType], [saleRate], [costPrice], [centerPrice], [saleUnitPrice], [pcReqNo], [pcReqSeq], [regUserId], [regYmd], [regHms], [uptUserId], [uptYmd], [uptHms], [plRoNo], [plRoSeq], [storageUseReqNo], [storageUseReqSeq], [puRackCode], [riNo], [riSeq], [memo1], [idx], [created])
+    select                   getDate(), 'ssuyong',  [comCode], [saleNo], [saleSeq], [saleType], [plComCode], [plPlaceNo], [plPlaceSeq], [puComCode], [itemId], [qty], [salePriceType], [saleRate], [costPrice], [centerPrice], [saleUnitPrice], [pcReqNo], [pcReqSeq], [regUserId], [regYmd], [regHms], [uptUserId], [uptYmd], [uptHms], [storageUseReqNo], [storageUseReqSeq], [plRoNo], [plRoSeq], [puRackCode], [riNo], [riSeq], [memo1], [idx], [created]       
+	from e_saleItem
+	where 1=1
+    and regYmd = '2025-12-03'
+    and itemId = '2055557'
+	and comCode = 'ㅈ011'
+
+	--2.내역 삭제
+	
+	delete from e_saleItem
+	where 1=1
+    and regYmd = '2025-12-03'
+    and itemId = '2055557'
+	and comCode = 'ㅈ011'
+
+	rollback tran
+	commit tran
+
+
+----------------------------------------------------
+------------------------------------------------------------
+--매입처 거래 상세내역에 택배비 녹여달라? 택배비 9600원
+select 9600/1.1; --8728
+
+select 8728*1.1
+
+
+select * from e_saleItem
+where comCode = 'ㅂ186'
+  and saleNo = '20251204001'
+order by idx desc;
+
+select * from e_saleItem
+where saleNo = '20251204001'
+
+begin tran
+update e_saleItem
+set memo1 = '운송비(9600)포함(80,560+8,728)'
+where comCode = 'ㅂ186'
+  and saleNo = '20251204001'
+
+rollback tran
+commit tran
+
+
+------
+
+
+select 80560+8728
+
+begin tran
+update e_saleItem
+set costPrice = 80560+8728,
+  saleUnitPrice = 80560+8728
+where comCode = 'ㅂ186'
+  and saleNo = '20251204001'
+
+  rollback tran
+
+  commit tran
+
+select 88616+9600 = 98,216
+
+ select * from e_saleItem
+ where memo1 like '운송비%'
+
+------------------------------------------------------------
+
+select * from e_saleItem
+where comCode = 'ㅂ186'
+
+
+-----------------------------------------------------
+--센터가 업데이트
+
+select * from vw_centerPrice
+
+select * from e_item
+where itemNo = '03L105266DQ';
+
+
+select ei.itemNo, vw.before vwPrice, ei.centerPrice itemPrice --6431건이 다름
+from e_item ei
+join vw_centerPrice vw on vw.itemNo = ei.itemNo
+where vw.before != ei.centerPrice
+--where vw.centerPrice != ei.salePrice
+
+
+SELECT  
+    s.name  AS SchemaName,
+    t.name  AS TableName,
+    c.name  AS ColumnName
+FROM sys.columns c
+JOIN sys.tables  t ON c.object_id = t.object_id
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE c.name = 'centerPrice'
+ORDER BY s.name, t.name;
+
+begin tran
+update ei
+set ei.centerPrice = vw.before
+  , ei.salePrice = vw.before
+from e_item ei
+join vw_centerPrice vw on vw.itemNo = ei.itemNo
+  where vw.before != ei.centerPrice
+
+rollback tran
+commit tran
+
+------------------------------------------------------------
+--매입상세내역에 운반비 추가 예정
+
+SELECT 
+    SCHEMA_NAME(o.schema_id) AS SchemaName,
+    o.name AS ProcedureName,
+    m.definition
+FROM 
+    sys.objects o
+JOIN 
+    sys.sql_modules m ON o.object_id = m.object_id
+WHERE 
+    o.type = 'P'  -- 저장 프로시저만
+    AND m.definition LIKE '%매입%'  -- 여기에 찾고자 하는 단어
+ORDER BY 
+    o.name;
+

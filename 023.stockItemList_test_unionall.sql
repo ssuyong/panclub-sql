@@ -489,7 +489,9 @@ LEFT JOIN dbo.e_code cd1 ON cd1.comCode = i.comCode
 LEFT OUTER JOIN dbo.e_otherSaleRate osr ON osr.comCode = @n__4carComCode 
   AND osr.custCode = 'ㅇ499' 
   AND osr.itemId = i.itemId 
-INNER JOIN (SELECT srchKeyWord, MIN(idx) idx FROM #tbl_itemH GROUP BY srchKeyWord) bk ON i.ItemNo = bk.srchKeyword
+INNER JOIN 
+(SELECT srchKeyWord, MIN(idx) idx FROM #tbl_itemH GROUP BY srchKeyWord) bk 
+  ON i.ItemNo = bk.srchKeyword
   AND @n__4carComCode = st.comCode
   AND i.itemNo LIKE '%'+@i__itemNo+'%'
   
