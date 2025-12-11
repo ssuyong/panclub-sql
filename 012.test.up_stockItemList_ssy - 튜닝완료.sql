@@ -15,6 +15,8 @@ ALTER PROC [dbo].[up_stockItemList_ssy]
 ㅇ002	(주)엠케이파츠(950)
 ㅇ479	(주) 인터카스코리아(794)
 ㅂ184   보스카통상(1326)
+ㅈ011   제파(1349)
+ㅂ186   부품인(1434)
        
 --ssy운영:
 SET STATISTICS TIME, IO ON;--48초
@@ -36,7 +38,7 @@ DBCC FREEPROCCACHE WITH NO_INFOMSGS;
 
 SET STATISTICS TIME, IO ON;--2초
 exec 
-panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    
+panErp.dbo.up_stockItemList_ssy	@i__workingType='SALE_LIST',    
 @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',    
 @i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
 @i__itemId=0,    @i__itemNo='',    @i__itemName='',    @i__makerCode='',    

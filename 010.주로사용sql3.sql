@@ -743,7 +743,7 @@ join e_item ei on ei.itemId = sr.itemId
 join e_rack r on r.comCode = sr.comCode and r.rackCode = sr.rackCode
 join e_storage sg on sg.comCode = r.comCode and sg.storageCode = r.storageCode
 where sr.comCode = 'ㄱ121'
-  and ei.itemNo = 'LR077883'
+  and ei.itemNo = '66207850470'
 
   select pcReqNo, gvQty, gvComCode, pr.regUserId, procStep from e_pcReqItem pr
   join e_item ei on ei.itemId = pr.itemId
@@ -1962,8 +1962,47 @@ commit tran
 -------------------------------------------------
 --12/10 영규: 퀵/용차, 택배, 화물 는 빨간 바탕으로 해달라
 select distinct deliWay from e_pcReq
---화면단에서 처리
-
-
-
+--화면단에서 처리함.
 -------------------------------------------------
+select sr.stockQty, *
+from e_otherSaleRate osr
+join e_item ei on ei.itemId = osr.itemId
+join e_stockRack sr on sr.itemId = ei.itemId 
+  and sr.comCode = osr.comCode
+where osr.comCode = 'ㄱ121'
+  and ei.itemNo = '4E0698151'
+  and sr.stockQty > 0
+
+select *
+from e_stockRack sr
+join e_item ei on ei.itemId = sr.itemId
+join (
+select max(custCode) custCode, itemId,  max(purRate) purRate
+from e_otherSaleRate osr
+where comCode = 'ㄱ121'
+group by itemId
+) osr on osr.itemId = ei.itemId
+where ei.itemNo = '4E0698151'
+  and sr.comCode = 'ㄱ121'
+  and sr.stockQty > 0
+
+
+  select *
+from e_otherSaleRate osr
+join e_item ei on ei.itemId = osr.itemId
+where osr.comCode = 'ㄱ121'
+  and ei.itemNo = '4E0698151'
+
+
+  SET STATISTICS TIME, IO ON;--2초
+exec 
+panErp.dbo.up_stockItemList_ssy	@i__workingType='SALE_LIST',    
+@i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',    
+@i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
+@i__itemId=0,    @i__itemNo='',    @i__itemName='',    @i__makerCode='',    
+@i__classCode='',    @i__storName='',      @i__bulkSrchType='itemNo',    
+@i__itemBulk='4E0698151',   
+@i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    
+@i__noRealYN='N',    @i__qtyZeroYN='N',    @i__consignCustCode='',      
+@i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
+SET STATISTICS TIME, IO OFF
