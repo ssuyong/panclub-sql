@@ -5,7 +5,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER PROC [dbo].[up_stockItemList_test]
+ALTER PROC [dbo].[up_stockItemList_ssy]
 /***************************************************************
 설명 : 재고 목록 : up_stockList 대체
 
@@ -88,7 +88,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 --로그--------------------------
 INSERT INTO panErp.dbo._SPLOG( sp,params)
-	VALUES('panErp.dbo.up_stockItemList_test', 
+	VALUES('panErp.dbo.up_stockItemList_ssy', 
 	'@i__workingType='''+ISNULL(@i__workingType,'')+''',
 	 @i__page='+cast(ISNULL(@i__page,0) as varchar(100))+',
 	 @i__qty='+cast(ISNULL(@i__qty,0) as varchar(100))+',	 

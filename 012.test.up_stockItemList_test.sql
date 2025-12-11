@@ -202,7 +202,7 @@ panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    
 @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='', 
 @i__eYmd2='',        @i__storCode='',    @i__itemId=0,    @i__itemNo='',    @i__itemName='',   
 @i__makerCode='',    @i__classCode='',    @i__storName='',    
-@i__bulkSrchType='itemNo',    @i__itemBulk='테스트테스트',    @i__checkType='ALL',    @i__outStorCode='',    
+@i__bulkSrchType='itemNo',    @i__itemBulk='07119905032힣테스트테스트',    @i__checkType='ALL',    @i__outStorCode='',    
 @i__storageCode='',    @i__noRealYN='N', 
 @i__qtyZeroYN='N',    @i__consignCustCode='',      @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
 
@@ -237,7 +237,7 @@ panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    @i__page=0,    
 	,@i__noRealYN varchar(1) = 'N'
 	,@i__qtyZeroYN varchar(1) = 'N'
 	,@i__consignCustCode varchar(20) = ''
-WITH RECOMPILE --ssy 1
+--WITH RECOMPILE --ssy 1
 AS
 
 SET ARITHABORT ON;
@@ -3943,6 +3943,16 @@ END
 RETURN
 
 /*
+panErp.dbo.up_stockItemList	@i__workingType='SALE_LIST',    
+@i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',    
+@i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
+@i__itemId=0,    @i__itemNo='',    @i__itemName='',    @i__makerCode='',    
+@i__classCode='',    @i__storName='',      @i__bulkSrchType='itemNo',    
+@i__itemBulk='07119904448힣4M0816421D힣01292317853힣07147201307힣11127582245힣07147443710',   
+@i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    
+@i__noRealYN='N',    @i__qtyZeroYN='N',    @i__consignCustCode='',      
+@i__logComCode='ㅂ186',    @i__logUserId='ssuyong'
+go
 panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',    
 @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',    
 @i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
@@ -3951,5 +3961,5 @@ panErp.dbo.up_stockItemList_test	@i__workingType='SALE_LIST',
 @i__itemBulk='07119904448힣4M0816421D힣01292317853힣07147201307힣11127582245힣07147443710',   
 @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    
 @i__noRealYN='N',    @i__qtyZeroYN='N',    @i__consignCustCode='',      
-@i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
+@i__logComCode='ㅂ186',    @i__logUserId='ssuyong'
 */
