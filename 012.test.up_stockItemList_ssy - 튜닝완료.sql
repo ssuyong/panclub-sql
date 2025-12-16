@@ -17,6 +17,7 @@ ALTER PROC [dbo].[up_stockItemList_ssy]
 ㅂ184   보스카통상(1326)
 ㅈ011   제파(1349)
 ㅂ186   부품인(1434)
+ㄱ008   글로벌웍스코리아(1447)
        
 --ssy운영:
 SET STATISTICS TIME, IO ON;--48초
@@ -1210,7 +1211,7 @@ SET @sql1 = @sql1 + N'
 			  AND _s.comCode = @i__consignCustCode))
 		  and _sr.stockQty > 0
 		  AND ISNULL(_s.consignCustCode,'''') 
-		    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㅇ496'')
+		    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
 	'
 	--if @i__logUserId = 'zzz'
 	--	SET @sql = @sql + N'	and _s.storageCode <> ''zzz'' '
@@ -1312,7 +1313,7 @@ CROSS APPLY (
 	  or (_s.consignCustCode is null 
 	    AND _s.comCode = @i__consignCustCode))
 	AND ISNULL(_s.consignCustCode,'''') 
-	 NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㅇ496'')
+	 NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
     
 ) ca1
 
@@ -1334,7 +1335,7 @@ CROSS APPLY (
 	AND _s.storType in (''신품'',''중고'',''리퍼'') 
 	AND _s.workableYN = ''Y''
 	AND ISNULL(_s.consignCustCode,'''') 
-	  NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㅇ496'')
+	  NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
     
 ) ca2
 
@@ -1356,7 +1357,7 @@ CROSS APPLY (
 	AND _s.storType in (''신품'',''중고'',''리퍼'') 
 	AND _s.workableYN = ''Y''
 	AND _s.consignCustCode 
-	  in (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㅇ496'')
+	  in (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
     
 ) ca3
 '
@@ -1443,7 +1444,7 @@ LEFT JOIN (select  _sr.itemId ,
 	where @n__4carComCode = _sr.comCode  
 	  AND @n__4carComCode <> @i__logComCode  
 	  and ISNULL(_s.consignCustCode,'''') 
-	    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㅇ496'')
+	    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
 	GROUP BY _sr.itemId ) temp ON temp.itemId = st.itemId 
 LEFT JOIN dbo.e_code cd1 ON cd1.comCode = i.comCode
   AND cd1.mCode = ''1100'' 
@@ -1625,7 +1626,8 @@ JOIN (
         (''ㅇ002'',''ㅇ002'',''ㅇ496''),--엠케이
         (''ㅂ184'',''ㅂ184'',''ㅇ496''),--보스카통상
 		(''ㅈ011'',''ㅈ011'',''ㅇ496''),--제파
-		(''ㅂ186'',''ㅂ186'',''ㅇ496'') --부품인
+		(''ㅂ186'',''ㅂ186'',''ㅇ496''), --부품인
+		(''ㄱ008'',''ㄱ008'',''ㅇ496'') --글로벌웍스코리아
 ) v(consignCustCode, excludeSelf, excludeOther)
     ON 1 = 1
 '
