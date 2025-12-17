@@ -252,7 +252,7 @@ BEGIN
     -- 공백으로 들어온것은 대상에서 제외
 	--SELECT val FROM dbo.[UDF_SPLIT](@i__item_bulk,'힣') WHERE val<>''
 	INSERT INTO #tbl_itemH (srchKeyword, srchKeyword_origin)
-		SELECT distinct a.val, b.val
+		SELECT a.val, b.val
 		FROM 
 		 (SELECT idx, val 
 		  FROM  dbo.UF_SPLIT(@i__itemBulk,'힣') 
