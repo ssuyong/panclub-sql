@@ -44,7 +44,7 @@ panErp.dbo.up_stockItemList_ssy	@i__workingType='SALE_LIST',
 @i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
 @i__itemId=0,    @i__itemNo='',    @i__itemName='',    @i__makerCode='',    
 @i__classCode='',    @i__storName='',      @i__bulkSrchType='itemNo',    
-@i__itemBulk='07119904448힣4M0816421D힣01292317853힣07147201307힣11127582245힣07147443710',   
+@i__itemBulk='07119904448힣07119904448힣4M0816421D힣01292317853힣07147201307힣11127582245힣07147443710',   
 @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    
 @i__noRealYN='N',    @i__qtyZeroYN='N',    @i__consignCustCode='',      
 @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
@@ -252,14 +252,23 @@ BEGIN
     -- 공백으로 들어온것은 대상에서 제외
 	--SELECT val FROM dbo.[UDF_SPLIT](@i__item_bulk,'힣') WHERE val<>''
 	INSERT INTO #tbl_itemH (srchKeyword, srchKeyword_origin)
-		SELECT a.val, b.val
-		FROM 
-		 (SELECT idx, val 
-		  FROM  dbo.UF_SPLIT(@i__itemBulk,'힣') 
-		  where val <> 'undefined' AND val<>'') a 
-		  JOIN (SELECT idx, val 
-		        FROM  dbo.UF_SPLIT(@n__item_bulk_origin,'힣') 
-				where val <> 'undefined' AND val<>'') b ON a.idx = b.idx
+	SELECT s1, s2
+	FROM (
+		SELECT a.val s1, b.val s2, MIN(a.idx) idx
+		FROM (
+			SELECT idx, val
+			FROM dbo.UF_SPLIT(@i__itemBulk, '힣')
+			WHERE val <> 'undefined' AND val <> ''
+		) a
+		CROSS APPLY (
+			SELECT idx, val
+			FROM dbo.UF_SPLIT(@n__item_bulk_origin, '힣')
+			WHERE val <> 'undefined' AND val <> ''
+		) b
+		WHERE a.idx = b.idx
+		GROUP BY a.val, b.val
+	) z
+	ORDER BY idx
 
 	--멀티검색로그 입력 . 2024.03.28 hsg
 	--IF @i__bulkSrchType = 'itemId' 
