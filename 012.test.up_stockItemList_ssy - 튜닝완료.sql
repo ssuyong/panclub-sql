@@ -9,11 +9,11 @@ ALTER PROC [dbo].[up_stockItemList_ssy]
 /***************************************************************
 설명 : 재고 목록 : up_stockList 대체
 
+ㅇ496	이지통상(74-738	)
 ㅇ499	아우토서울(rackCode: 578)
 ㅂ022	VAG AUTOPARTS CO.LTD(644)
-ㅇ496	이지통상(74-738	)
-ㅇ002	(주)엠케이파츠(950)
 ㅇ479	(주) 인터카스코리아(794)
+ㅇ002	(주)엠케이파츠(950)
 ㅂ184   보스카통상(1326)
 ㅈ011   제파(1349)
 ㅂ186   부품인(1434)
@@ -1228,7 +1228,26 @@ SET @sql1 = @sql1 + N'
 END
 ELSE
 BEGIN
-SET @sql1 = @sql1 + N''''' locaMemo ,'
+SET @sql1 = @sql1 + N'
+	(
+		SELECT STRING_AGG(''[''+_s.storageName+''] '' +
+						cast(ISNULL( _sr.stockQty,'''') as varchar(100)), '' * '')
+		from dbo.e_stockRack _sr
+		LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode 
+		  AND _sr.rackCode = _r.rackCode
+		LEFT JOIN dbo.e_storage _s ON _s.comCode = _r.comCode 
+		  AND _s.storageCode = _r.storageCode 
+		where _sr.itemid = st.itemId 
+		  and _sr.comCode = st.comCode 
+		  AND (@i__consignCustCode = '''' 
+		    or _s.consignCustCode = @i__consignCustCode 
+			or (_s.consignCustCode is null 
+			  AND _s.comCode = @i__consignCustCode))
+		  and _sr.stockQty > 0
+		  AND ISNULL(_s.consignCustCode,'''') 
+		    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
+	'	
+	SET @sql1 = @sql1 + N'	) locaMemo ,  '
 END
 
 SET @sql1 = @sql1 + N' 
@@ -1569,7 +1588,8 @@ SET @sql2 = @sql2 + N'
 END
 ELSE
 BEGIN
-SET @sql2 = @sql2 + N' '''' locaMemo ,'
+SET @sql2 = @sql2 + N'
+	ca.locaMemo2 locaMemo,  '
 END
 
 SET @sql2 = @sql2 + N' 
@@ -1676,7 +1696,12 @@ CROSS APPLY (
         ''['' + _s.storageName + '']'' + _r.rackName + '' '' 
 		+ CAST(_sr.stockQty AS VARCHAR(20)) end,
         '' * ''
-    ) AS locaMemo
+    ) AS locaMemo,
+	STRING_AGG(case when _s.consignCustCode = param.consignCustCode then
+        ''['' + _r.rackName + ''] ''
+		+ CAST(_sr.stockQty AS VARCHAR(20)) end,
+        '' * ''
+    ) AS locaMemo2
 	  
 	from dbo.e_stockRack _sr
 	LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode 
