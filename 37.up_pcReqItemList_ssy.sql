@@ -84,11 +84,11 @@ panErp.dbo.up_pcReqItemList	@i__workingType='LIST',    @i__page=0,    @i__qty=0,
 panErp.dbo.up_pcReqItemList_test	@i__workingType='LIST',    @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='', 
 @i__eYmd2='',    @i__pcReqNo='20250710024',   @i__reqSeq ='',   @i__reqSeqArr ='',    @i__logComCode='ㄱ121',    @i__logUserId='jyspan'
 
-panErp.dbo.up_pcReqItemList_test	@i__workingType='LIST',    @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='',    @i__eYmd2='', 
-@i__pcReqNo='20250808014',   @i__reqSeq ='',   @i__reqSeqArr ='',    @i__logComCode='ㄱ121',    @i__logUserId='jyspan'
-
-panErp.dbo.up_pcReqItemList_test	@i__workingType='LIST',    @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='',    @i__eYmd2='',  
-@i__pcReqNo='20250808015',   @i__reqSeq ='',   @i__reqSeqArr ='',    @i__logComCode='ㄱ121',    @i__logUserId='jyspan'
+panErp.dbo.up_pcReqItemList	@i__workingType='LIST',    @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='',    @i__eYmd2='', 
+@i__pcReqNo='20251224020',   @i__reqSeq ='',   @i__reqSeqArr ='',    @i__logComCode='ㄱ121',    @i__logUserId='jyspan'
+go
+panErp.dbo.up_pcReqItemList_ssy	@i__workingType='LIST',    @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',      @i__eYmd1='',      @i__sYmd2='',    @i__eYmd2='',  
+@i__pcReqNo='20251224020',   @i__reqSeq ='',   @i__reqSeqArr ='',    @i__logComCode='ㄱ121',    @i__logUserId='jyspan'
 
 
 **************************************************************/
@@ -692,33 +692,24 @@ FROM @t2 t
  
 
 WHERE (t.reqSeq in (select val from dbo.UF_SPLIT(@i__reqSeqArr , '!'))) OR @i__reqSeqArr = ''
-AND (
+AND 
+(
     (ISNULL(t.stockRackCode, '') = '' 
-         AND ISNULL(t.storConsignCustCode, '') NOT IN ('ㅇ499', 'ㅂ022','ㅇ479', 'ㅇ002', 'ㅂ184', 'ㅈ011', 'ㅂ186', 'ㄱ008'))
+         AND NOT EXISTS (
+            SELECT 1
+            FROM dbo.e_consignCust c
+            WHERE c.consignCustCode = t.storConsignCustCode
+		)
+	)
     OR
-    (ISNULL(t.stockRackCode, '') = 'ㅇ499' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㅇ499')
-    OR
-    (ISNULL(t.stockRackCode, '') = 'ㅂ022' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㅂ022')
-	OR
-    (ISNULL(t.stockRackCode, '') = 'ㅇ479' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㅇ479')
-	OR
-    (ISNULL(t.stockRackCode, '') = 'ㅇ002' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㅇ002')
-	OR
-    (ISNULL(t.stockRackCode, '') = 'ㅂ184' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㅂ184')
-	OR
-    (ISNULL(t.stockRackCode, '') = 'ㅈ011' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㅈ011')
-	OR
-    (ISNULL(t.stockRackCode, '') = 'ㅂ186' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㅂ186')
-	OR
-    (ISNULL(t.stockRackCode, '') = 'ㄱ008' 
-         AND ISNULL(t.storConsignCustCode, '') = 'ㄱ008')
+    (ISNULL(t.stockRackCode, '') <> '' 
+         AND EXISTS (
+            SELECT 1
+            FROM dbo.e_consignCust c
+            WHERE c.consignCustCode = t.stockRackCode
+			  AND c.consignCustCode = t.storConsignCustCode
+		)
+	)
 )
 
 ORDER BY pcReqNo, LEN(t.reqSeq), reqSeq
