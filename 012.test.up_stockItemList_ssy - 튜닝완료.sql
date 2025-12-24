@@ -20,8 +20,6 @@ ALTER PROC [dbo].[up_stockItemList_ssy]
 ㄱ008   글로벌웍스코리아(1447)
        
 --ssy운영:
-SET STATISTICS TIME, IO ON;--48초
-exec 
 panErp.dbo.up_stockItemList	@i__workingType='SALE_LIST',    
 @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',    
 @i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
@@ -31,24 +29,16 @@ panErp.dbo.up_stockItemList	@i__workingType='SALE_LIST',
 @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    
 @i__noRealYN='N',    @i__qtyZeroYN='N',    @i__consignCustCode='',      
 @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
-SET STATISTICS TIME, IO OFF;
-
---ssy개발:
-UPDATE STATISTICS dbo.e_item IX_e_item_itemNo WITH FULLSCAN;
-DBCC FREEPROCCACHE WITH NO_INFOMSGS;
-
-SET STATISTICS TIME, IO ON;--2초
-exec 
+go
 panErp.dbo.up_stockItemList_ssy	@i__workingType='SALE_LIST',    
 @i__page=0,    @i__qty=0,      @i__orderBy='',    @i__sYmd1='',    
 @i__eYmd1='',    @i__sYmd2='',    @i__eYmd2='',        @i__storCode='',    
 @i__itemId=0,    @i__itemNo='',    @i__itemName='',    @i__makerCode='',    
 @i__classCode='',    @i__storName='',      @i__bulkSrchType='itemNo',    
-@i__itemBulk='07119904448힣07119904448힣4M0816421D힣01292317853힣07147201307힣11127582245힣07147443710',   
+@i__itemBulk='07119904448힣4M0816421D힣01292317853힣07147201307힣11127582245힣07147443710',   
 @i__checkType='ALL',    @i__outStorCode='',    @i__storageCode='',    
 @i__noRealYN='N',    @i__qtyZeroYN='N',    @i__consignCustCode='',      
 @i__logComCode='ㄱ121',    @i__logUserId='ssuyong'
-SET STATISTICS TIME, IO OFF
 
 ***************************************************************/
 	@i__workingType varchar(20) = '',
@@ -1220,7 +1210,9 @@ SET @sql1 = @sql1 + N'
 			  AND _s.comCode = @i__consignCustCode))
 		  and _sr.stockQty > 0
 		  AND ISNULL(_s.consignCustCode,'''') 
-		    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
+		    NOT IN (SELECT consignCustCode FROM dbo.e_consignCust
+			        UNION
+					SELECT ''ㅇ496'')
 	'
 	--if @i__logUserId = 'zzz'
 	--	SET @sql = @sql + N'	and _s.storageCode <> ''zzz'' '
@@ -1245,7 +1237,9 @@ SET @sql1 = @sql1 + N'
 			  AND _s.comCode = @i__consignCustCode))
 		  and _sr.stockQty > 0
 		  AND ISNULL(_s.consignCustCode,'''') 
-		    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
+		    NOT IN (SELECT consignCustCode FROM dbo.e_consignCust
+			        UNION
+					SELECT ''ㅇ496'')
 	'	
 	SET @sql1 = @sql1 + N'	) locaMemo ,  '
 END
@@ -1341,7 +1335,9 @@ CROSS APPLY (
 	  or (_s.consignCustCode is null 
 	    AND _s.comCode = @i__consignCustCode))
 	AND ISNULL(_s.consignCustCode,'''') 
-	 NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
+	 NOT IN (SELECT consignCustCode FROM dbo.e_consignCust
+			 UNION
+			 SELECT ''ㅇ496'')
     
 ) ca1
 
@@ -1363,7 +1359,9 @@ CROSS APPLY (
 	AND _s.storType in (''신품'',''중고'',''리퍼'') 
 	AND _s.workableYN = ''Y''
 	AND ISNULL(_s.consignCustCode,'''') 
-	  NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
+	  NOT IN (SELECT consignCustCode FROM dbo.e_consignCust
+			  UNION
+			  SELECT ''ㅇ496'')
     
 ) ca2
 
@@ -1385,7 +1383,9 @@ CROSS APPLY (
 	AND _s.storType in (''신품'',''중고'',''리퍼'') 
 	AND _s.workableYN = ''Y''
 	AND _s.consignCustCode 
-	  in (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
+	  in (SELECT consignCustCode FROM dbo.e_consignCust
+		  UNION
+		  SELECT ''ㅇ496'')
     
 ) ca3
 '
@@ -1472,7 +1472,9 @@ LEFT JOIN (select  _sr.itemId ,
 	where @n__4carComCode = _sr.comCode  
 	  AND @n__4carComCode <> @i__logComCode  
 	  and ISNULL(_s.consignCustCode,'''') 
-	    NOT IN (''ㅇ499'', ''ㅂ022'', ''ㅇ479'', ''ㅇ002'', ''ㅂ184'', ''ㅈ011'', ''ㅂ186'', ''ㄱ008'', ''ㅇ496'')
+	    NOT IN (SELECT consignCustCode FROM dbo.e_consignCust
+			    UNION
+				SELECT ''ㅇ496'')
 	GROUP BY _sr.itemId ) temp ON temp.itemId = st.itemId 
 LEFT JOIN dbo.e_code cd1 ON cd1.comCode = i.comCode
   AND cd1.mCode = ''1100'' 
@@ -1647,17 +1649,7 @@ SET @sql2 = @sql2 + N'
 ,v.consignCustCode AS stockRackCode
 
 FROM dbo.e_stockItem st 
-JOIN (
-    VALUES
-        (''ㅇ499'',''ㅇ499'',''ㅇ496''),--아우토서울
-        (''ㅂ022'',''ㅂ022'',''ㅇ496''),--VAG
-        (''ㅇ479'',''ㅇ479'',''ㅇ496''),--인터카스
-        (''ㅇ002'',''ㅇ002'',''ㅇ496''),--엠케이
-        (''ㅂ184'',''ㅂ184'',''ㅇ496''),--보스카통상
-		(''ㅈ011'',''ㅈ011'',''ㅇ496''),--제파
-		(''ㅂ186'',''ㅂ186'',''ㅇ496''), --부품인
-		(''ㄱ008'',''ㄱ008'',''ㅇ496'') --글로벌웍스코리아
-) v(consignCustCode, excludeSelf, excludeOther)
+JOIN dbo.e_consignCust v
     ON 1 = 1
 '
 IF @i__itemBulk <> ''
