@@ -1222,7 +1222,7 @@ ELSE
 BEGIN
 SET @sql1 = @sql1 + N'
 	(
-		SELECT STRING_AGG(''[''+_s.storageName+''] '' +
+		SELECT STRING_AGG(''[남양주] '' +
 						cast(ISNULL( _sr.stockQty,'''') as varchar(100)), '' * '')
 		from dbo.e_stockRack _sr
 		LEFT JOIN dbo.e_rack _r ON _sr.comCode = _r.comCode 
