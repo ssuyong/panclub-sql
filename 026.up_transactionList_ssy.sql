@@ -1805,7 +1805,80 @@ EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), 
 														,@i__itemId bigint ,@i__itemNo varchar(50)  ,@i__orderGroupId varchar(50), @i__carNo varchar(30) ,@i__custOrderNo varchar(100)', 
 						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode ,@i__placeYmdYN, @i__itemId	,@i__itemNo ,@i__orderGroupId , @i__carNo ,@i__custOrderNo 
 
+--운송비 
+SET @sql = N'
+SELECT 
+	p.custCode, 
+	--placeDmdYmd,
+	ISNULL(p.placeYmd, p.regYmd ) placeDmdYmd,
+	''입고(운송비)'' ledgType,
+	placeNo summary
+	,regYmd
+	, regHms
+	,1 seq
+	,1 cnt
+	,ROUND(directCost/1.1,0) unitPrice
+	,ROUND(directCost /1.1,0) sumPrice
+	,ROUND(directCost /1.1 * 0.1,0) taxPrice
+	,ROUND(directCost,0) sumPriceTax
+	,0 itemId
+	,''운송비'' itemNo
+	,''운송비'' itemName
+	,'''' memo
+	,'''' carNo
+	,'''' carType
+	,'''' orderGroupId
+	,'''' clType
+	,regUserId
+	,ISNULL (p.custOrderNo,'''') makerCode
+	,'''' custOrderNo
+	,''판매출고''　ledgCateg
+	,'''' rcvCustCode
+	,ROUND(directCost,0) centerPrice
+	,'''' orderNo
+	,'''' orderSeq
+	,'''' salePrice
+	,placeNo+''(발주)'' summary2
+FROM dbo.e_place p
+JOIN dbo.e_cust cust ON cust.comCode = p.comCode AND cust.custCode = p.custCode 
+WHERE p.custCode = @i__logComCode AND directYN = ''Y''  AND ISNULL(p.placeYmd, p.regYmd)  BETWEEN @i__sYmd1 AND @i__eYmd1 '
 
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND p.custCode = @i__custCode '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND p.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND p.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND p.custCode  = @i__custCode '
+
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND '''' = @i__orderGroupId '
+
+IF @i__carNo <> ''
+SET @sql = @sql + N' AND '''' = @i__carNo '
+
+IF @i__custOrderNo  <> ''
+SET @sql = @sql + N' AND p.custOrderNo = @i__custOrderNo '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND 0 = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND ''운송비''  = @i__itemNo '
+
+INSERT INTO #원장4 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms ,seq ,cnt ,
+					unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+						,carNo, carType, orderGroupId, clType,regUserId,makerCode,custOrderNo,
+						ledgCateg,rcvCustCode,centerPrice ,orderNo, orderSeq, salePrice,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50), @i__placeYmdYN varchar(5)
+														,@i__itemId bigint ,@i__itemNo varchar(50)   ,@i__orderGroupId varchar(50), @i__carNo varchar(30),@i__custOrderNo varchar(100) ', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode, @i__placeYmdYN ,@i__itemId	,@i__itemNo  ,@i__orderGroupId, @i__carNo ,@i__custOrderNo
 
 
 SELECT distinct 
