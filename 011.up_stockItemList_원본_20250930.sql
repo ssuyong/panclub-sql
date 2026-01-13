@@ -5,7 +5,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER  PROC [dbo].[up_stockItemList]
+ALTER  PROC [dbo].[up_stockItemList_org]
 /***************************************************************
 설명 : 재고 목록 : up_stockList 대체
        
