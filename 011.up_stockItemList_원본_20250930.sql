@@ -195,7 +195,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 --로그--------------------------
 INSERT INTO panErp.dbo._SPLOG( sp,params)
-	VALUES('panErp.dbo.up_stockItemList', 
+	VALUES('panErp.dbo.up_stockItemList_org', 
 	'@i__workingType='''+ISNULL(@i__workingType,'')+''',
 	 @i__page='+cast(ISNULL(@i__page,0) as varchar(100))+',
 	 @i__qty='+cast(ISNULL(@i__qty,0) as varchar(100))+',	 
