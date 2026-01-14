@@ -1539,7 +1539,9 @@ IF @i__itemNo <> ''
 SET @sql1 = @sql1 + N' AND i.itemNo LIKE ''%'+@i__itemNo+'%'' '	
 
 --IF @i__storName <> ''
---SET @sqlW = @sqlW + N'  AND sg.storageName LIKE '''+@i__storName+'%'' '	
+--SET @sqlW = @sqlW + N'  AND sg.storageName LIKE '''+@i__storName+'%'' '
+IF @i__outStorCode <> ''
+SET @sql1 = @sql1 + N'  AND st.locaMemo LIKE ''%'+@i__outStorCode+'%'' '
 
 IF @i__makerCode <> ''
 SET @sql1 = @sql1 + N' AND i.makerCode= @i__makerCode '
@@ -1563,7 +1565,6 @@ IF @i__logComCode NOT IN (SELECT comCode FROM dbo.UF_GetChildComcode(@ErpOperate
 BEGIN
 	SET @sql1 = @sql1 + N' AND	nd.itemId IS NULL'
 END
-
 
 -----------------------------------------------------------------------------------------------------------------
 --sql2: 위탁업체 재고
@@ -1868,6 +1869,8 @@ SET @sql2 = @sql2 + N' AND i.itemNo LIKE ''%'+@i__itemNo+'%'' '
 
 --IF @i__storName <> ''
 --SET @sqlW = @sqlW + N'  AND sg.storageName LIKE '''+@i__storName+'%'' '	
+IF @i__outStorCode <> ''
+SET @sql2 = @sql2 + N'  AND st.locaMemo LIKE ''%'+@i__outStorCode+'%'' '
 
 IF @i__makerCode <> ''
 SET @sql2 = @sql2 + N' AND i.makerCode= @i__makerCode '
@@ -1964,6 +1967,16 @@ FROM (
 WHERE (T.qtyNew > 0 OR T.qtyCtNew > 0)
 
 ' + @orderBy
+
+--print sql
+print LEN(@sql)
+
+DECLARE @i int = 1;
+WHILE @i <= LEN(@sql) * 4
+BEGIN
+    PRINT SUBSTRING(@sql, @i, 4000);
+    SET @i += 4000;
+END
 
 EXEC SP_EXECUTESQL @sql, N'@i__logComCode  varchar(20), @i__itemId bigint, 
                          @i__storCode varchar(20), @i__storName varchar(100)
