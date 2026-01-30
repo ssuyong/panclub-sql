@@ -1,6 +1,6 @@
 ﻿USE [panErp]
 GO
-/****** Object:  StoredProcedure [dbo].[up_pcReqItemList]    Script Date: 2025-12-24 오전 11:35:00 ******/
+/****** Object:  StoredProcedure [dbo].[up_pcReqItemList]    Script Date: 2026-01-30 오후 4:49:53 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -652,10 +652,18 @@ SELECT t.comCode , t.pcReqNo , t.reqSeq , t.gvComCode , t.gvPlaceNo , t.gvPlaceS
 				, stor.storageName,stor.storageCode , r.rackName , r.rackCode , sr.stockQty
 				 ,t.procStep , t.makerCode ,t.rejectMemo,t.procUserName ,t.rcvLogisCode , r.logisRackId ,stor.consignCustCode, t.makerName  , t.orderNo ,t.orderStatus   , t.factoryNo , t.className ,t.stockRackCode
 	   FROM  @t t
-	   JOIN dbo.e_stockRack sr ON t.itemId = sr.itemId AND t.comCode = sr.comCode    -- 품목의 아이디에 맞는 상품의 랙,창고 정보를 조인
-	   LEFT OUTER JOIN dbo.e_rack r ON sr.rackCode = r.rackCode AND r.comCode = t.comCode AND r.validYN = 'Y'
-       LEFT OUTER JOIN dbo.e_storage stor ON stor.storageCode = r.storageCode AND stor.comCode = t.comCode AND stor.validYN = 'Y' AND stor.workableYN = 'Y'
-	   WHERE stor.consignCustCode <> t.gvComCode  AND sr.stockQty <> 0 AND t.procStep = ''
+	   JOIN dbo.e_stockRack sr ON t.itemId = sr.itemId 
+	     AND t.comCode = sr.comCode    -- 품목의 아이디에 맞는 상품의 랙,창고 정보를 조인
+	   LEFT OUTER JOIN dbo.e_rack r ON sr.rackCode = r.rackCode 
+	     AND r.comCode = t.comCode 
+		 AND r.validYN = 'Y'
+       LEFT OUTER JOIN dbo.e_storage stor ON stor.storageCode = r.storageCode 
+	     AND stor.comCode = t.comCode 
+		 AND stor.validYN = 'Y' 
+		 AND stor.workableYN = 'Y'
+	   WHERE stor.consignCustCode <> t.gvComCode  
+	     AND sr.stockQty <> 0 
+		 --AND t.procStep = ''
 
 
 -- @t2에 없는 데이터(재고가 없는 데이터)를 @t에서 다시 붙여넣어서 결과적으로 재고가 있는 데이터의 랙 리스크와 재고가 없는 부품(랙 정보 없는 1행)으로 @t2를 머지 
