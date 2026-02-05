@@ -661,9 +661,25 @@ SELECT t.comCode , t.pcReqNo , t.reqSeq , t.gvComCode , t.gvPlaceNo , t.gvPlaceS
 	     AND stor.comCode = t.comCode 
 		 AND stor.validYN = 'Y' 
 		 AND stor.workableYN = 'Y'
+	   OUTER APPLY (
+		SELECT pcReqNo
+		FROM dbo.e_pcReqItemRack prr
+		where prr.comCode = r.comCode 
+		   AND prr.rackCode = r.rackCode
+		   AND prr.pcReqNo = t.pcReqNo
+		   AND prr.reqSeq = t.reqSeq) prr
 	   WHERE stor.consignCustCode <> t.gvComCode  
-	     AND sr.stockQty <> 0 
-		 --AND t.procStep = ''
+	     AND (
+            (ISNULL(prr.pcReqNo,'') = '' --미접수
+                AND sr.stockQty > 0 
+                AND ISNULL(t.procStep, '') = ''
+				) 
+		 OR (ISNULL(prr.pcReqNo,'') = '' --거부
+		        --AND sr.stockQty > 0
+                AND t.procStep = '거부'
+				)
+         OR (ISNULL(prr.pcReqNo,'') <> '' ) --접수
+          )
 
 
 -- @t2에 없는 데이터(재고가 없는 데이터)를 @t에서 다시 붙여넣어서 결과적으로 재고가 있는 데이터의 랙 리스크와 재고가 없는 부품(랙 정보 없는 1행)으로 @t2를 머지 
