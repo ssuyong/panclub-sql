@@ -1,11 +1,12 @@
-﻿USE [panErp]
+USE [panErp]
 GO
-/****** Object:  StoredProcedure [dbo].[up_transactionList]    Script Date: 2025-12-05 오후 1:47:27 ******/
+/****** Object:  StoredProcedure [dbo].[up_transactionList]    Script Date: 2026-03-25 오전 11:38:24 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
---ALTER  PROC [dbo].[up_transactionList]
+
+ALTER  PROC [dbo].[up_transactionList]
 /***************************************************************
 설명 : 거래상세내역
 		-- 현재 LIST WORKING TYPE은 사용 X 
@@ -213,8 +214,12 @@ IF @i__workingType = 'LIST' OR @i__workingType = ''
 
 IF @i__workingType = 'WHLIST' --매입처 거래상세내역
 	GOTO WHLIST_QRY  --리스팅
+IF @i__workingType = 'WHSUM' --매입처 거래내역 Summary
+	GOTO WHSUM_QRY  --리스팅
 IF @i__workingType = 'RLLIST' --매출처 거래상세내역
 	GOTO RLLIST_QRY  --리스팅
+IF @i__workingType = 'RLSUM' --매출처 거래내역 Summary
+	GOTO RLSUM_QRY  --리스팅
 
 IF @i__workingType = 'OUT_LIST'
 	GOTO OUT_LIST  --위탁업체용 출고/반입내역(실제는 입고/반출)
@@ -873,6 +878,607 @@ DROP TABLE #원장2
 
 RETURN
 /*********************************************************************************************************/
+WHSUM_QRY:  --매입처 거래내역 Summary
+
+CREATE TABLE #원장7 (
+	idx int identity primary key , 
+	custCode varchar(10) , 
+	stdYmd varchar(10),--날짜
+	ledgType varchar(50), --구분
+	summary varchar(20),--적요
+	regYmd varchar(10)
+	,regHms varchar(8)
+	,seq varchar(20) --순번
+	,cnt varchar(20)
+	,unitPrice money 
+	, sumPrice money  --공급가액
+	, taxPrice money --세액  
+	, sumPriceTax money  --합계금액
+	,itemId bigint 
+	,itemNo varchar (50)
+	,itemName varchar (200)  
+	,memo varchar (2000) 
+	,carNo varchar(100)
+	, carType varchar(50) 
+	,orderGroupId varchar( 30)
+	, clType varchar(20)
+	,regUserId varchar(50)
+	,makerCode varchar(50)
+	,custOrderNo varchar(100)
+	,ledgCateg varchar(50)
+	,rcvCustCode varchar(100) --납품처 
+	,centerPrice money --센터가 
+	,orderNo varchar(20)
+	,orderSeq varchar(20) 
+	,summary2 varchar(100)--적요2 구분값을포함한 적요
+	,placeNo varchar(20)
+	,placeSeq varchar(20)
+
+)
+
+--입고
+SET @sql = N'
+SELECT 
+	w.custCode,
+	CASE WHEN @i__placeYmdYN = ''Y'' THEN ISNULL(wi.placeRlYmd,w.whYmd) ELSE w.whYmd END AS whYmd,
+	''입고'',
+	w.whNo,
+	w.regYmd,
+	w.regHms,
+	wi.whSeq,
+	wi.cnt,
+	ROUND(wi.whUnitPrice,0),
+	ROUND(wi.whSumPrice,0),
+	ROUND(wi.whSumPrice*0.1,0)  ,
+	ROUND(wi.whSumPrice *1.1,0),
+	wi.itemId
+	,i.itemNo
+	--,ISNULL(i.itemName,i.itemNameEn)
+		,CASE WHEN ISNULL(oi.itemName, '''') <> '''' THEN oi.itemName 
+		WHEN ISNULL(i.itemName, '''') <> '''' THEN i.itemName 
+		ELSE i.itemNameEn END itemName
+	,wi.memo1
+	,ISNULL(og.carNo ,'''')
+	,ISNULL(og.carType,'''') 
+	, og.orderGroupId
+	, ''''
+	,wi.regUserId
+	--,ISNULL(og.makerCode,'''') makerCode
+	,ISNULL(cd.codeName, '''') makerCode
+	,ISNULL (p.custOrderNo,'''') custOrderNo
+	,''입고''
+	,ISNULL (cust.custName, '''') rcvCustCode
+	,oi.centerPrice 
+	,oi.orderNo
+	,oi.orderSeq
+	,w.whNo+ ''(입고)''
+	,pli.placeNo
+	,pli.placeSeq
+	
+FROM dbo.e_whItem wi 
+JOIN dbo.e_wh w on w.comCode = wi.comCode AND w.whNo = wi.whNo
+--JOIN dbo.e_item i ON w.comCode = i.comCode AND wi.itemId = i.itemId
+JOIN dbo.e_item i ON wi.itemId = i.itemId
+--JOIN dbo.e_orderItem oi on wi.comCode = oi.comCode and wi.orderNo = oi.orderNo and wi.orderSeq = oi.orderSeq
+LEFT OUTER JOIN dbo.e_orderItem oi on wi.comCode = oi.comCode and wi.orderNo = oi.orderNo and wi.orderSeq = oi.orderSeq
+--LEFT OUTER JOIN dbo.e_place p on p.comCode = wi.comCode and p.placeNo = wi.placeNo
+JOIN dbo.e_placeItem pli ON pli.comCode = wi.comCode AND pli.placeNo = wi.placeNo AND pli.placeSeq = wi.placeSeq
+JOIN dbo.e_place p ON p.comCode = pli.comCode AND p.placeNo = pli.placeNo
+--JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = wi.comCode
+LEFT OUTER JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = wi.comCode 
+LEFT OUTER JOIN dbo.e_cust cust on cust.comCode = oi.comCode AND cust.custCode = og.custCode 
+LEFT OUTER JOIN dbo.e_code cd ON cd.comCode = wi.comCode AND cd.code = i.makerCode and  mCode = ''1000''
+
+WHERE wi.comCode = @i__logComCode '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND w.custCode = @i__custCode '
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND w.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND w.custCode =  @i__custCode'
+--SET @sql = @sql + N' AND w.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE  @i__custCode END'
+--SET @sql = @sql + N' AND w.custCode = CASE WHEN @i__mainYN = ''Y'' THEN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @i__custCode) ELSE  @i__custCode END'
+
+IF @i__placeYmdYN = 'Y'
+SET @sql = @sql + N' AND wi.placeRlYmd BETWEEN  @i__sYmd1 AND @i__eYmd1 '
+ELSE 
+SET @sql = @sql + N' AND w.whYmd BETWEEN  @i__sYmd1 AND @i__eYmd1 '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND wi.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND og.orderGroupId = @i__orderGroupId '
+
+IF @i__carNo <> ''
+SET @sql = @sql + N' AND og.carNo = @i__carNo '
+
+IF @i__custOrderNo  <> ''
+SET @sql = @sql + N' AND p.custOrderNo = @i__custOrderNo '
+
+INSERT INTO #원장7 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,makerCode,custOrderNo,ledgCateg,rcvCustCode,centerPrice ,orderNo, orderSeq,summary2,placeNo,placeSeq)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50), @i__placeYmdYN varchar(5)
+														,@i__itemId bigint ,@i__itemNo varchar(50)   ,@i__orderGroupId varchar(50), @i__carNo varchar(30)
+														,@i__custOrderNo varchar(100) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode, @i__placeYmdYN ,@i__itemId	,@i__itemNo  ,@i__orderGroupId, @i__carNo ,@i__custOrderNo , @i__mainYN ,@mainCustCode
+
+--운송비 
+SET @sql = N'
+SELECT 
+	p.custCode, 
+	--placeDmdYmd,
+	ISNULL(p.placeYmd, p.regYmd ) placeDmdYmd,
+	''입고(운송비)'',
+	placeNo
+	,regYmd
+	, regHms
+	,''운송비''
+	,1
+	,ROUND(directCost/1.1,0)
+	,ROUND(directCost /1.1,0)
+	,ROUND(directCost /1.1 * 0.1,0)
+	,ROUND(directCost,0)
+	,0
+	,''운송비''
+	,''운송비''
+	,''''
+	,''''
+	,''''
+	,''''
+	,''''
+	,regUserId
+	,ISNULL (p.custOrderNo,'''') custOrderNo
+	,''운송비''
+	,ISNULL(cust.custName,'''')　rcvCustCode
+	,0
+	,placeNo+''(발주)''
+	,placeNo
+	,''운송비''
+FROM dbo.e_place p
+JOIN dbo.e_cust cust ON cust.comCode = p.comCode AND cust.custCode = p.custCode 
+WHERE p.comCode = @i__logComCode AND directYN = ''Y''  AND ISNULL(p.placeYmd, p.regYmd)  BETWEEN @i__sYmd1 AND @i__eYmd1 '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND p.custCode = @i__custCode '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND p.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND p.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND p.custCode  = @i__custCode '
+
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND '''' = @i__orderGroupId '
+
+IF @i__carNo <> ''
+SET @sql = @sql + N' AND '''' = @i__carNo '
+
+IF @i__custOrderNo  <> ''
+SET @sql = @sql + N' AND p.custOrderNo = @i__custOrderNo '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND 0 = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND ''운송비''  = @i__itemNo '
+
+INSERT INTO #원장7 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,custOrderNo, ledgCateg,rcvCustCode,centerPrice,summary2,placeNo,placeSeq)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50)  ,@i__orderGroupId varchar(50), @i__carNo varchar(30) ,@i__custOrderNo varchar(100)
+											,@i__itemId bigint ,@i__itemNo varchar(50) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode  ,@i__orderGroupId , @i__carNo ,@i__custOrderNo  ,@i__itemId	,@i__itemNo,@i__mainYN ,@mainCustCode
+
+--반출내역 
+SET @sql = N'
+SELECT 
+	--oi.placeCustCode as custCode ,
+	ISNULL(ro.custCode,'''') custCode, --	ISNULL(p.custCode,'''') custCode,
+	--ro.roYmd,
+	CASE WHEN @i__placeYmdYN = ''Y'' THEN ISNULL(roi.placeWhYmd,ro.roYmd) ELSE ro.roYmd END AS roYmd,
+	''입고(반출)'',
+	ro.roNo,
+	ro.regYmd,
+	ro.regHms,
+	roi.roSeq,
+	-roi.cnt,
+	--0,
+	ROUND(roi.roUnitPrice,0),
+	ROUND(-roi.roUnitPrice * roi.cnt,0),
+	ROUND(-roi.roUnitPrice * roi.cnt*0.1,0),
+	ROUND(-roi.roUnitPrice * roi.cnt * 1.1,0),
+	roi.itemId,
+	i.itemNo
+	--ISNULL(i.itemName,i.itemNameEn)
+		,CASE WHEN ISNULL(oi.itemName, '''') <> '''' THEN oi.itemName 
+		WHEN ISNULL(i.itemName, '''') <> '''' THEN i.itemName 
+		ELSE i.itemNameEn END itemName
+	,roi.memo1
+	,og.carNo 
+	,og.carType 
+	, og.orderGroupId
+	, ''''
+	,roi.regUserId
+	,ISNULL(ro.custRoNo,'''') custRoNo
+	--,ISNULL(og.makerCode,'''') makerCode
+	,ISNULL(cd.codeName, '''') makerCode
+	,''반출''
+	,ISNULL (cust.custName, '''') rcvCustCode
+	,oi.centerPrice
+	,oi.orderNo
+	,oi.orderSeq
+	,ro.roNo+''(반출)''
+FROM e_roItem roi
+JOIN dbo.e_ro ro ON roi.roNo = ro.roNo AND roi.comCode = ro.comCode 
+--join dbo.e_orderItem oi on oi.orderNo = roi.orderNo and oi.orderSeq = roi.orderSeq  and oi.comCode = roi.comCode
+LEFT OUTER JOIN dbo.e_orderItem oi on oi.orderNo = roi.orderNo and oi.orderSeq = roi.orderSeq  and oi.comCode = roi.comCode  --2023.10.04 위에거에서 변경 left outer 로 변경
+--JOIN dbo.e_item i ON roi.comCode = i.comCode AND roi.itemId = i.itemId
+JOIN dbo.e_item i ON  roi.itemId = i.itemId
+--JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = roi.comCode 
+--JOIN dbo.e_place p on roi.comCode = p.comCode AND roi.placeNo = p.placeNo
+--JOIN dbo.e_cust cust on cust.comCode = oi.comCode AND cust.custCode = og.custCode 
+LEFT OUTER JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = roi.comCode   --2023.10.04 위에거에서 변경 left outer 로 변경
+LEFT OUTER JOIN dbo.e_place p on roi.comCode = p.comCode AND roi.placeNo = p.placeNo   --2023.10.04 위에거에서 변경 left outer 로 변경
+LEFT OUTER JOIN dbo.e_cust cust on cust.comCode = oi.comCode AND cust.custCode = og.custCode   --2023.10.04 위에거에서 변경 left outer 로 변경
+LEFT OUTER JOIN dbo.e_code cd ON cd.comCode = roi.comCode AND cd.code = i.makerCode and  mCode = ''1000''
+WHERE roi.comCode = @i__logComCode '
+
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND ro.custCode = @i__custCode '  --아래거에서 변경. 2023.11.07 hsg
+----SET @sql = @sql + N' AND oi.placeCustCode = @i__custCode '
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND ro.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND ro.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND ro.custCode =  @i__custCode '
+
+IF @i__placeYmdYN = 'Y'
+SET @sql = @sql + N' AND roi.placeWhYmd BETWEEN  @i__sYmd1 AND @i__eYmd1 '
+ELSE 
+SET @sql = @sql + N' AND ro.roYmd BETWEEN  @i__sYmd1 AND @i__eYmd1 '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND roi.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND og.orderGroupId = @i__orderGroupId '
+
+IF @i__carNo <> ''
+SET @sql = @sql + N' AND og.carNo = @i__carNo '
+
+IF @i__custOrderNo  <> ''
+SET @sql = @sql + N' AND ro.custRoNo = @i__custOrderNo '
+print @sql
+INSERT INTO #원장7 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,custOrderNo,makerCode,ledgCateg,rcvCustCode,centerPrice,orderNo,orderSeq,summary2 )
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50) ,@i__placeYmdYN varchar(5)
+														,@i__itemId bigint ,@i__itemNo varchar(50)  ,@i__orderGroupId varchar(50), @i__carNo varchar(30) 
+														,@i__custOrderNo varchar(100) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode ,@i__placeYmdYN, @i__itemId	,@i__itemNo ,@i__orderGroupId , @i__carNo ,@i__custOrderNo ,@i__mainYN ,@mainCustCode
+
+
+--반출페널티
+SET @sql = N'
+SELECT 
+	--oi.placeCustCode as custCode ,
+	ISNULL(ro.custCode,'''') custCode,  --ISNULL(p.custCode,'''') custCode,
+	--ro.roYmd,
+	CASE WHEN @i__placeYmdYN = ''Y'' THEN ISNULL(roi.placeWhYmd,ro.roYmd) ELSE ro.roYmd END AS roYmd,
+	''입고(반출페널티)'',
+	ro.roNo,
+	ro.regYmd,
+	ro.regHms,
+	roi.roSeq,
+	1,
+	--0,
+	ROUND(penaltyPrice/1.1,0),
+	ROUND(penaltyPrice/1.1,0),
+	ROUND(penaltyPrice/1.1*0.1,0),
+	ROUND(penaltyPrice,0),
+	0,
+	''반품페널티'',
+	''반품페널티''
+	,''''
+	,og.carNo 
+	,og.carType 
+	, og.orderGroupId
+	, ''''
+	,roi.uptUserId
+	,ISNULL(ro.custRoNo,'''') custRoNo
+	--,ISNULL(og.makerCode,'''') makerCode
+	,ISNULL(cd.codeName, '''') makerName
+	,''반품페널티''                       
+	,ISNULL (cust.custName, '''') rcvCustCode
+	,0
+	,ro.roNo+''(반출)''
+FROM e_roItem roi
+JOIN dbo.e_ro ro ON roi.roNo = ro.roNo AND roi.comCode = ro.comCode 
+LEFT OUTER join dbo.e_orderItem oi on oi.orderNo = roi.orderNo and oi.orderSeq = roi.orderSeq  and oi.comCode = roi.comCode
+--JOIN dbo.e_item i ON roi.comCode = i.comCode AND roi.itemId = i.itemId
+JOIN dbo.e_item i ON  roi.itemId = i.itemId
+LEFT OUTER JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = roi.comCode 
+JOIN dbo.e_place p on roi.comCode = p.comCode AND roi.placeNo = p.placeNo
+LEFT OUTER JOIN dbo.e_cust cust on cust.comCode = oi.comCode AND cust.custCode = og.custCode 
+LEFT OUTER JOIN dbo.e_code cd ON cd.comCode = roi.comCode AND cd.code = i.makerCode and  mCode = ''1000''
+WHERE roi.comCode = @i__logComCode AND penaltyPrice >0'
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND ro.custCode = @i__custCode '  --아래거에서 변경. 2023.11.07 hsg
+----SET @sql = @sql + N' AND oi.placeCustCode = @i__custCode '
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND ro.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND ro.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND ro.custCode  = @i__custCode '
+
+IF @i__placeYmdYN = 'Y'
+SET @sql = @sql + N' AND roi.placeWhYmd BETWEEN  @i__sYmd1 AND @i__eYmd1 '
+ELSE 
+SET @sql = @sql + N' AND ro.roYmd BETWEEN  @i__sYmd1 AND @i__eYmd1 '
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND og.orderGroupId = @i__orderGroupId '
+
+IF @i__carNo <> ''
+SET @sql = @sql + N' AND og.carNo = @i__carNo '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND roi.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__custOrderNo  <> ''
+SET @sql = @sql + N' AND ro.custRoNo = @i__custOrderNo '
+
+INSERT INTO #원장7 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,custOrderNo,makerCode,ledgCateg,rcvCustCode,centerPrice,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50) ,@i__placeYmdYN varchar(5)
+,@i__orderGroupId varchar(50), @i__carNo varchar(30) ,@i__custOrderNo varchar(100) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20) 
+,@i__itemId bigint ,@i__itemNo varchar(50)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode ,@i__placeYmdYN  ,@i__orderGroupId , @i__carNo,@i__custOrderNo ,@i__mainYN ,@mainCustCode 
+						,@i__itemId  ,@i__itemNo
+
+
+
+
+-- 2023.11.06 hsg :  수동처리: 판매출고, 반품입고
+SET @sql = N'
+SELECT 
+	stor.consignCustCode custCode, 
+	convert(char(10), act.created, 121) stdYmd ,	  
+	CASE act.actionType WHEN ''rlod'' THEN ''입고'' WHEN ''whri'' THEN ''입고(반출)'' ELSE act.actionType END ledgType, 
+	CAST(act.idx as varchar(100)) summary, 
+	convert(char(10), act.created, 121) regYmd ,          --등록 연월일
+    convert(char(8), act.created, 108) regHms,           --등록 시분초
+	'''' seq ,
+	CASE act.actionType WHEN ''rlod'' THEN act.procQty WHEN ''whri'' THEN -1*act.procQty ELSE '''' END cnt,
+
+	ROUND(act.unitPriceConsignAdjust,0) unitPrice,
+	ROUND(act.unitPriceConsignAdjust * (CASE act.actionType WHEN ''rlod'' THEN act.procQty WHEN ''whri'' THEN -1*act.procQty ELSE '''' END),0) sumPrice, 
+	ROUND((act.unitPriceConsignAdjust * (CASE act.actionType WHEN ''rlod'' THEN act.procQty WHEN ''whri'' THEN -1*act.procQty ELSE '''' END)) * 0.1,0) taxPrice ,  
+	ROUND((act.unitPriceConsignAdjust * (CASE act.actionType WHEN ''rlod'' THEN act.procQty WHEN ''whri'' THEN -1*act.procQty ELSE '''' END)) * 1.1,0) sumPriceTax, 
+
+	i.itemId ,
+	i.itemNo ,
+	CASE WHEN ISNULL(i.itemName, '''') <> '''' THEN i.itemName  ELSE i.itemNameEn END itemName,
+	CASE act.actionType WHEN ''rlod'' THEN ''
+	'' WHEN ''whri'' THEN ''반품입고'' ELSE '''' END  memo,
+	'''' carNo,
+	'''' carType, 
+	'''' orderGroupId, 
+	'''' clType,
+	'''' regUserId,
+	'''' custOrderNo,
+	ISNULL(cd.codeName, '''') makerCode,
+	CASE act.actionType WHEN ''rlod'' THEN ''판매출고'' WHEN ''whri'' THEN ''반품입고'' ELSE '''' END  ledgCateg,
+	'''' rcvCustCode,
+	act.centerPrice 
+	,CAST(act.idx as varchar(100))+''(판매출고)'' summary2
+FROM dbo.e_stockActions act
+JOIN dbo.e_rack rk ON act.comCode = rk.comCode AND act.rackCode = rk.rackCode
+JOIN dbo.e_storage stor ON rk.comCOde = stor.comCode AND rk.storageCode = stor.storageCode
+JOIN dbo.e_item i ON act.itemId = i.itemId
+LEFT OUTER JOIN dbo.e_code cd ON cd.comCode = act.comCode AND cd.code = i.makerCode and  mCode = ''1000''
+WHERE 1 = 1 AND stor.consignYN = ''Y'' AND act.actionType IN (''rlod'', ''whri'')
+  AND convert(char(10), act.created, 121)  BETWEEN  @i__sYmd1 AND @i__eYmd1 '
+
+ IF @i__itemId <> ''
+SET @sql = @sql + N' AND i.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__logComCode = 'ㄱ000' -- 팬오토인 경우 
+BEGIN
+	SET @sql = @sql + N' AND stor.consignCustCode IN (SELECT consignCustCode FROM dbo.e_storage WHERE comCode=@i__logComCode AND consignYn=''Y'') '  -- 위탁창고로 등록된 거래처만
+	--IF @i__custCode <> ''  --거래처로 조회한 경우 
+	--	SET @sql = @sql + N' AND stor.consignCustCode = @i__custCode '
+	--IF @i__custCode <> ''
+	--	SET @sql = @sql + N' AND stor.consignCustCode =  CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+	IF @i__custCode <> '' AND @i__mainYN = 'Y'
+	SET @sql = @sql + N' AND stor.consignCustCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+	IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+	SET @sql = @sql + N' AND stor.consignCustCode  = @i__custCode '
+END
+ELSE  --위탁한 업체인 경우  
+BEGIN
+	SET @sql = @sql + N' AND 1 = 2  '  --팬오토 이외의 업체에는 이 항목이 노출이 안되게 하기 위함.
+END
+
+INSERT INTO #원장7 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+						,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+						,carNo, carType, orderGroupId, clType,regUserId,custOrderNo,makerCode,ledgCateg,rcvCustCode,centerPrice,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50) 
+,@i__placeYmdYN varchar(5) ,@i__orderGroupId varchar(50), @i__carNo varchar(30) ,@i__custOrderNo varchar(100) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)
+,@i__itemId bigint ,@i__itemNo varchar(50)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode ,@i__placeYmdYN  ,@i__orderGroupId , @i__carNo,@i__custOrderNo ,@i__mainYN ,@mainCustCode
+						,@i__itemId  ,@i__itemNo 
+
+
+--판매출고
+SET @sql = N'
+SELECT 
+	si.comCode, 
+	si.regYmd,	
+	CASE WHEN si.saleType = ''판매출고'' THEN ''입고(판매내역)''
+		WHEN si.saleType = ''반품입고'' THEN ''입고(반출판매내역)''
+		ELSE '''' END,
+	si.saleNo,
+	si.regYmd,
+	si.regHms,
+
+	si.saleSeq,
+	CASE WHEN si.saleType = ''판매출고'' THEN si.qty
+		WHEN si.saleType = ''반품입고'' THEN -si.qty
+		ELSE si.qty END,	
+	ROUND(si.saleUnitPrice,0),	
+	CASE WHEN si.saleType = ''판매출고'' THEN ROUND(si.saleUnitPrice*si.qty,0)
+		WHEN si.saleType = ''반품입고'' THEN ROUND(si.saleUnitPrice*si.qty*-1,0)
+		ELSE  ROUND(si.saleUnitPrice*si.qty,0) END,
+	CASE WHEN si.saleType = ''판매출고'' THEN ROUND(si.saleUnitPrice*si.qty*0.1,0)
+		WHEN si.saleType = ''반품입고'' THEN ROUND(si.saleUnitPrice*si.qty*0.1*-1,0)
+		ELSE  ROUND(si.saleUnitPrice*si.qty*0.1,0) END,
+	CASE WHEN si.saleType = ''판매출고'' THEN ROUND(si.saleUnitPrice*si.qty*1.1,0)
+		WHEN si.saleType = ''반품입고'' THEN ROUND(si.saleUnitPrice*si.qty*1.1*-1,0)
+		ELSE  ROUND(si.saleUnitPrice*si.qty*1.1,0) END,
+ 
+	si.itemId,
+	i.itemNo,
+	ISNULL(i.itemName,i.itemNameEn),
+	'''',
+	'''',
+	'''',
+	'''',
+	'''',
+	--si.regUserId,
+	''AUTO'',
+	'''',
+	'''',
+	si.saleType,
+	ISNULL(cust.custName,'''') rcvCustCode,
+	si.centerPrice,
+	si.saleNo + ''(saleNo)''
+
+	
+	
+FROM	dbo.e_saleItem   si
+--left outer JOIN dbo.e_item i ON si.itemId = i.itemId AND i.comCode = si.plComCode --20240214 yoonsang 재고옮기고 수정
+--left outer JOIN dbo.e_cust cust ON cust.comCode = si.comCode AND cust.custCode = si.puComCode --20240214 yoonsang 재고옮기고 수정
+JOIN dbo.e_item i ON si.itemId = i.itemId 
+LEFT OUTER JOIN dbo.e_placeItem pli ON pli.comCode = @i__logComCode AND pli.placeNo = si.plPlaceNo
+left outer JOIN dbo.e_cust cust ON cust.comCode = pli.comCode AND cust.custCode = pli.rcvCustCode
+
+WHERE si.plComCode = @i__logComCode AND si.regYmd BETWEEN @i__sYmd1 AND @i__eYmd1 AND ISNULL(pli.orderGroupId,'''') = '''' 
+'
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND si.comCode = @i__custCode '
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND si.comCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND si.comCode = @i__custCode '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND si.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+
+ELSE
+BEGIN
+	SET @sql = @sql
+END
+
+
+INSERT INTO #원장7 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+						,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+						,carNo, carType, orderGroupId, clType,regUserId,custOrderNo,makerCode,ledgCateg,rcvCustCode,centerPrice,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50),@i__itemId bigint 
+								,@i__itemNo varchar(50) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode,@i__itemId ,@i__itemNo ,@i__mainYN ,@mainCustCode
+
+
+SELECT  
+    a.custCode,
+    cust.custName as custName,    
+    sum(ROUND(a.unitPrice,0)) unitPrice,
+    sum(ROUND(a.sumPrice,0)) sumPrice,
+    sum(ROUND(a.taxPrice,0)) taxPrice,
+    sum(ROUND(sumPriceTax,0)) sumPriceTax
+FROM #원장7 a
+JOIN dbo.e_cust cust ON a.custCode = cust.custCode and cust.comCode = @i__logComCode
+--JOIN dbo.e_cust cust2 ON cust2.comCode =  cust.comCode  AND  cust2.custCode = ISNULL(cust.mainCustCode,cust.custCode)
+LEFT OUTER JOIN dbo.e_user u on u.userId = a.regUserId and u.comCode = @i__logComCode
+--LEFT OUTER JOIN dbo.e_placeItem pli ON pli.comCode = @i__logComCode AND pli.orderNo = a.orderNo AND pli.orderSeq = a.orderSeq
+--LEFT OUTER JOIN (SELECT DISTINCT wrd1.comCode, wrd1.wdReqNo, wrd1.jobNo FROM dbo.e_wdReqDtl wrd1 --발주출금요청
+--					      JOIN dbo.e_wdReq wr1 ON wrd1.comCode = wr1.comCode AND wrd1.wdReqNo = wr1.wdReqNo AND wr1.wdReqType ='발주출금'
+--				) z ON pli.comCode = z.comCode AND pli.placeNo = z.jobNo	
+--LEFT OUTER JOIN (SELECT DISTINCT wrd2.comCode, wrd2.wdReqNo, wrd2.jobNo,wrd2.jobSeq FROM dbo.e_wdReqDtl wrd2 --입고출금요청
+--					      JOIN dbo.e_wdReq wr2 ON wrd2.comCode = wr2.comCode AND wrd2.wdReqNo = wr2.wdReqNo AND wr2.wdReqType ='입고출금'
+--				) y ON pli.comCode = y.comCode AND a.summary = y.jobNo and a.seq = y.jobSeq
+--LEFT OUTER JOIN dbo.e_withdraw wd1 ON z.comCode = wd1.comCode AND z.wdReqNo = wd1.wdReqNo --발주출금
+--LEFT OUTER JOIN dbo.e_withdraw wd2 ON y.comCode = wd2.comCode AND y.wdReqNo = wd2.wdReqNo --입고출금
+
+LEFT OUTER JOIN (SELECT wrd1.comCode, wrd1.wdReqNo, wrd1.jobNo,wrd1.jobSeq, wrd1.jobType, CASE WHEN wd1.wdReqNo IS NULL THEN '요청(발주)' ELSE '완료(발주)' END withdrawStatus
+					FROM dbo.e_wdReqDtl wrd1 --발주출금요청
+					JOIN dbo.e_wdReq wr1 ON wrd1.comCode = wr1.comCode AND wrd1.wdReqNo = wr1.wdReqNo AND wr1.wdReqType ='발주출금'
+					--JOIN dbo.e_placeItem pli ON pli.comCode = wrd1.comCode AND pli.placeNo = wrd1.jobNo AND pli.placeSeq = wrd1.jobSeq
+					LEFT OUTER JOIN dbo.e_withdraw wd1 ON wr1.comCode = wd1.comCode AND wr1.wdReqNo = wd1.wdReqNo --발주출금
+					WHERE wrd1.comCode = @i__logComCode
+				) z ON z.comCode = @i__logComCode AND a.placeNo = z.jobNo  --AND a.ledgType = z.jobType
+
+LEFT OUTER JOIN (SELECT  wrd2.comCode, wrd2.wdReqNo, wrd2.jobNo,wrd2.jobSeq, wrd2.jobType, CASE WHEN wd2.wdReqNo IS NULL THEN '요청(입고)' ELSE '완료(입고)' END withdrawStatus
+					FROM dbo.e_wdReqDtl wrd2 --입고출금요청
+					JOIN dbo.e_wdReq wr2 ON wrd2.comCode = wr2.comCode AND wrd2.wdReqNo = wr2.wdReqNo AND wr2.wdReqType ='입고출금'
+					LEFT OUTER JOIN dbo.e_withdraw wd2 ON wr2.comCode = wd2.comCode AND wr2.wdReqNo = wd2.wdReqNo --입고출금
+					WHERE wrd2.comCode = @i__logComCode
+				) y ON y.comCode = @i__logComCode AND a.summary = y.jobNo and a.seq = y.jobSeq AND a.ledgType = y.jobType
+LEFT OUTER JOIN dbo.e_item c ON  a.itemId = c.itemId
+LEFT OUTER JOIN dbo.e_code d ON d.comCode = @i__logComCode AND d.mCode='1000' AND d.code = c.makerCode
+LEFT OUTER JOIN dbo.e_code d2 ON d2.comCode = @i__logComCode AND d2.mCode='1100' AND d2.code = c.classCode
+
+WHERE a.ledgType LIKE CASE WHEN @i__ledgType = '' THEN '%' ELSE '%' + @i__ledgType + '%' END
+group by a.custCode, cust.custName
+ORDER BY cust.custName
+             
+DROP TABLE #원장7
+
+RETURN
+/*********************************************************************************************************/
 RLLIST_QRY:　--매출처 거래상세내역 
 
 
@@ -1434,6 +2040,539 @@ DROP TABLE #원장3
 
 RETURN
 /*********************************************************************************************************/
+RLSUM_QRY:  --매출처 거래내역 Summary
+
+
+
+CREATE TABLE #원장6 (
+	idx int identity primary key , 
+	custCode varchar(10) , 
+	stdYmd varchar(10),--날짜
+	ledgType varchar(50), --구분
+	summary varchar(20),--적요
+	regYmd varchar(10)
+	,regHms varchar(8)
+	,seq varchar(20) --순번
+	,cnt varchar(20)
+	,unitPrice money 
+	, sumPrice money  --공급가액
+	, taxPrice money --세액  
+	, sumPriceTax money  --합계금액
+	,itemId bigint 
+	,itemNo varchar (50)
+	,itemName varchar (200)  
+	,memo varchar (2000) 
+	,carNo varchar(100)
+	, carType varchar(50) 
+	,orderGroupId varchar( 30)
+	, clType varchar(20)
+	,regUserId varchar(50)
+	,makerCode varchar(50)
+	,ledgCateg varchar(50)
+	,centerPrice money 
+	,costPrice money --원가 (입고단가)
+	,srCode varchar(50) --sr코드
+	,summary2 varchar(100)--적요2
+
+)
+--반입 
+SET @sql = N'
+SELECT 
+	ri.custCode,
+	ri.riYmd,
+	''출고(반입)'',
+	ri.riNo,
+	ri.regYmd,
+	ri.regHms,
+	rii.riSeq,
+	-rii.cnt,
+	ROUND(rii.riUnitPrice,0),
+	ROUND(-rii.riUnitPrice * rii.cnt,0),
+	ROUND(-rii.riUnitPrice * rii.cnt*0.1,0),
+	ROUND(-rii.riUnitPrice* rii.cnt*1.1,0)
+	,rii.itemId
+	,i.itemNo
+	--,ISNULL(i.itemName,i.itemNameEn)
+	,CASE WHEN ISNULL(oi.itemName, '''') <> '''' THEN oi.itemName 
+		WHEN ISNULL(i.itemName, '''') <> '''' THEN i.itemName 
+		ELSE i.itemNameEn END itemName
+	,rii.memo1
+	,og.carNo
+	,og.carType
+	,og.orderGroupId 
+	,oi.clType 
+	,rii.regUserId
+	--,ISNULL(og.makerCode,'''') makerCode
+	,ISNULL(cd.codeName, '''') makerCode
+	,''반입''
+	,oi.centerPrice
+	,rli.costPrice
+	,	 ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b
+                      WHERE  b.custcode = ri.custcode AND rii.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''') AS srCode
+	,ri.riNo + ''(반입)''
+FROM dbo.e_riItem rii
+JOIN dbo.e_ri ri ON rii.riNo = ri.riNo AND rii.comCode = ri.comCode 
+left outer join dbo.e_orderItem oi on oi.orderNo = rii.orderNo and oi.orderSeq = rii.orderSeq  and oi.comCode = rii.comCode
+JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = rii.comCode
+--JOIN dbo.e_item i ON rii.comCode = i.comCode AND rii.itemId = i.itemId
+JOIN dbo.e_item i ON rii.itemId = i.itemId
+
+LEFT OUTER JOIN (SELECT comCode, orderNo, orderSeq, AVG(costPrice) costPrice FROM dbo.e_rlitem WHERE comCode = @i__logComCode GROUP BY comCode, orderNo, orderSeq
+				) rli ON rii.comCode = rli.comCode AND rii.orderNo = rli.orderNo AND rii.orderSeq = rli.orderSeq
+LEFT OUTER JOIN dbo.e_srCust sc ON rii.comCode = sc.comCode AND ri.custCode = sc.custCode
+LEFT OUTER JOIN dbo.e_code cd ON cd.comCode = rii.comCode AND cd.code = i.makerCode and  mCode = ''1000''
+
+WHERE rii.comCode = @i__logComCode AND ri.riYmd BETWEEN @i__sYmd1 AND @i__eYmd1 '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND ri.custCode = @i__custCode '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND ri.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND ri.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND ri.custCode = @i__custCode '
+
+IF @i__clType <> ''
+SET @sql = @sql + N' AND oi.clType = @i__clType '
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND og.orderGroupId = @i__orderGroupId '
+
+IF @i__carNo  <> ''
+SET @sql = @sql + N' AND og.carNo = @i__carNo '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND rii.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND sc.srCode= @i__srCode '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND 
+ ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b             
+                      WHERE  b.custcode = ri.custcode AND rii.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''') LIKE ''%'' + @i__srCode + ''%'' '
+
+print @sql
+
+INSERT INTO #원장6 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,makerCode,ledgCateg,centerPrice, costPrice,srCode,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50) ,@i__clType varchar(30) ,@i__orderGroupId varchar(50)
+											,@i__carNo varchar(50) ,@i__itemId bigint ,@i__itemNo varchar(50) ,@i__srCode varchar(50)  ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode, @i__clType,@i__orderGroupId ,@i__carNo ,@i__itemId  ,@i__itemNo ,@i__srCode ,@i__mainYN ,@mainCustCode
+					
+--출고 
+SET @sql = N'
+SELECT 
+	rl.custCode,
+	rl.rlYmd,
+	''출고'',
+	rl.rlNo,
+	rl.regYmd,
+	rl.regHms,
+	rli.rlSeq
+	,rli.cnt
+	,ROUND(rli.rlUnitPrice,0)
+	,ROUND(rli.rlSumPrice,0)
+	,ROUND(rli.rlSumPrice*0.1,0)
+	,ROUND(rli.rlSumPrice*1.1,0)
+	,rli.itemId
+	,i.itemNo
+	--,ISNULL(i.itemName,i.itemNameEn)
+	,CASE WHEN ISNULL(oi.itemName, '''') <> '''' THEN oi.itemName 
+		WHEN ISNULL(i.itemName, '''') <> '''' THEN i.itemName 
+		ELSE i.itemNameEn END itemName
+	,rli.memo1
+	,og.carNo
+	,og.carType
+	,og.orderGroupId 
+	,oi.clType 
+	,rli.regUserId
+	--,ISNULL(og.makerCode,'''') makerCode
+	,ISNULL(cd.codeName, '''') makerName
+	,''출고''
+	,oi.centerPrice
+	,rli.costPrice
+	,	 ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b
+                      WHERE  b.custcode = rl.custcode AND rli.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''') AS srCode
+	,rl.rlNo + ''(출고)''
+FROM	dbo.e_rlItem rli 
+JOIN dbo.e_rl rl ON rl.rlNo = rli.rlNo AND rl.comCode = rli.comCode
+LEFT OUTER JOIN dbo.e_orderItem oi ON oi.comCode = rli.comCode AND oi.orderNo = rli.orderNo AND oi.orderSeq = rli.orderSeq
+JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = rli.comCode
+--JOIN dbo.e_item i ON rli.comCode = i.comCode AND rli.itemId = i.itemId 
+JOIN dbo.e_item i ON rli.itemId = i.itemId 
+LEFT OUTER JOIN dbo.e_srCust sc ON rli.comCode = sc.comCode AND rl.custCode = sc.custCode
+LEFT OUTER JOIN dbo.e_code cd ON cd.comCode = rli.comCode AND cd.code = i.makerCode and  mCode = ''1000''
+WHERE rli.comCode = @i__logComCode AND rl.rlYmd BETWEEN @i__sYmd1 AND @i__eYmd1 '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND rl.custCode = @i__custCode'
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND rl.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND rl.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND rl.custCode = @i__custCode '
+
+
+IF @i__clType <> ''
+SET @sql = @sql + N' AND oi.clType = @i__clType '
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND og.orderGroupId = @i__orderGroupId '
+
+IF @i__carNo  <> ''
+SET @sql = @sql + N' AND og.carNo = @i__carNo '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND rli.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND sc.srCode= @i__srCode '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND 
+ ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b
+                      WHERE   b.custcode = rl.custcode AND rli.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''') LIKE ''%'' + @i__srCode + ''%'' '
+
+INSERT INTO #원장6 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,makerCode,ledgCateg,centerPrice	,costPrice,srCode,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50) ,@i__clType varchar(30) ,@i__orderGroupId varchar(50)
+											,@i__carNo varchar(50) ,@i__itemId bigint ,@i__itemNo varchar(50) ,@i__srCode varchar(50) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20) ', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode, @i__clType ,@i__orderGroupId ,@i__carNo ,@i__itemId ,@i__itemNo ,@i__srCode ,@i__mainYN ,@mainCustCode
+
+--운송비
+SET @sql = N'
+SELECT 
+	rl.custCode,
+	rl.rlYmd,
+	''출고(운송비)'',
+	rl.rlNo,
+	rl.regYmd,
+	rl.regHms,
+	''운송비'' --seq
+	,1 --cnt
+	,ROUND (ISNULL(max(rl.deliveryFee),'''')/1.1 ,0) 	
+	,ROUND (ISNULL(max(rl.deliveryFee),'''')/1.1 ,0) 	
+	,ROUND (ISNULL(max(rl.deliveryFee),'''')/1.1*0.1,0) 	
+	,ROUND(ISNULL(max(rl.deliveryFee),''''),0)
+	,0
+	,''운송비''
+	,''운송비''
+	,MAX(rl.memo1)memo1
+	,MAX(og.carNo)
+	,MAX(og.carType)
+	,MAX(og.orderGroupId )
+	,MAX(oi.clType )
+	,MAX(rl.uptUserId)
+	,ISNULL(MAX(og.makerCode),'''') makerCode
+	,''출고(운송비)''
+	,''''
+	,''''
+	--, ISNULL(Replace(Stuff((SELECT '','' + MAX(sc.srCode)
+ --                     FOR xml path('''')), 1, 1, ''''), '','', '',''),'''')  AS srCode
+ 	,	 ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b                
+                      WHERE  b.custcode = rl.custcode AND rl.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''') AS srCode
+	,rl.rlNo + ''(출고)''
+FROM	dbo.e_rl rl 
+JOIN dbo.e_rlItem rli ON rl.comCode = rli.comCode AND  rl.rlNo = rli.rlNo
+LEFT OUTER JOIN dbo.e_orderItem oi ON oi.comCode = rli.comCode AND oi.orderNo = rli.orderNo AND oi.orderSeq = rli.orderSeq
+JOIN dbo.e_orderGroup og on og.orderGroupId = oi.orderGroupId and og.comCode = rli.comCode
+LEFT OUTER JOIN dbo.e_srCust sc ON rl.comCode = sc.comCode AND rl.custCode = sc.custCode
+WHERE rli.comCode = @i__logComCode AND rl.rlYmd BETWEEN @i__sYmd1 AND @i__eYmd1 AND rl.deliveryYN = ''Y'' '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND rl.custCode = @i__custCode'
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND rl.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND rl.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND rl.custCode = @i__custCode '
+
+
+IF @i__clType <> ''
+SET @sql = @sql + N' AND oi.clType  = @i__clType '
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND og.orderGroupId  = @i__orderGroupId '
+
+IF @i__carNo  <> ''
+SET @sql = @sql + N' AND  og.carNo = @i__carNo '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND sc.srCode= @i__srCode '
+IF @i__srCode <> ''
+ SET @sql = @sql + N'  AND	ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b                         
+                      WHERE  b.custcode = rl.custcode AND rl.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''')  LIKE ''%'' + @i__srCode + ''%'' '
+
+SET @sql  = @sql + ' group by rl.rlNo , rl.comCode, rl.regYmd,rl.regHms,	rl.custCode,	rl.rlYmd' 
+
+
+INSERT INTO #원장6 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+										,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+										,carNo, carType, orderGroupId, clType,regUserId,makerCode,ledgCateg,centerPrice,costPrice,srCode,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50) ,@i__clType varchar(30) ,@i__orderGroupId varchar(50)
+											,@i__carNo varchar(50) ,@i__itemId bigint ,@i__itemNo varchar(50) ,@i__srCode varchar(50) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode, @i__clType ,@i__orderGroupId ,@i__carNo ,@i__itemId ,@i__itemNo ,@i__srCode ,@i__mainYN ,@mainCustCode
+
+--일반 -> 보험전환 
+SET @sql = N'
+
+SELECT 
+	rli.custCode, 
+	a.clChnYmd,
+	''출고'',
+	rli.rlNo,
+	a.regYmd,
+	a.regHms,
+	rli.orderSeq,
+	-rli.rlCnt
+	,ROUND(-a.salePrice,0)
+	,ROUND(-a.sumPrice,0)
+	,ROUND(-a.sumPrice * 0.1,0)
+	,ROUND(-a.sumPrice*1.1,0)
+	,a.itemId
+	,i.itemNo
+	,i.itemName
+	,''''
+	,og.carNo
+	,og.carType
+	,a.orderGroupId
+	,a.clType
+	,a.regUserId
+	--,og.makerCode
+	,ISNULL(cd.codeName, '''') makerCode
+	,''출고(청구변경(일반)''
+	,a.centerPrice
+	,rli.costPrice
+	,	 ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b                           
+                      WHERE  b.custcode = og.custcode AND a.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''') AS srCode
+	,rli.rlNo + ''(출고)''
+
+FROM	dbo.e_orderItem a 
+LEFT OUTER JOIN (SELECT x.comCode, MAX(x.rlno) rlNo, MAX(x.rlSeq) rlSeq, x.orderNo, x.orderSeq, SUM(x.CNT) rlCnt , MAX(ISNULL(xx.custCode,'''')) AS custCode, MAX(xx.rlYmd) AS rlYmd
+					,AVG(x.costPrice) costPrice
+				  	FROM dbo.e_rlItem x
+					JOIN dbo.e_rl xx ON x.comCode = xx.comCode AND x.rlNo = xx.rlNo
+					WHERE x.comCode = @i__logComCode 
+					GROUP BY x.comCode, x.orderNo, x.orderSeq
+				) rli ON a.comCode = rli.comCode AND a.orderNo = rli.orderNo AND a.orderSeq = rli.orderSeq --출고품목
+LEFT OUTER JOIN (SELECT x.comCode, x.orderNo, x.orderSeq, SUM(x.cnt) clCnt 
+			FROM dbo.e_clReqItem x
+			JOIN dbo.e_clReq y ON x.comCode = y.comCode AND x.clReqNo = y.clReqNo
+			WHERE x.comCode = @i__logComCode  AND y.clType = ''일반'' AND x.cnt > 0 
+			GROUP BY x.comCode, x.orderNo, x.orderSeq
+		 ) cri ON a.comCode = cri.comCode AND a.orderNO = cri.orderNo AND a.orderSeq = cri.orderSeq  --일반건으로 플러스 청구 요청되었으면서 
+LEFT OUTER JOIN (SELECT x1.comCode, x1.orderNo, x1.orderSeq, SUM(x1.cnt) clCnt 
+					FROM dbo.e_clReqItem x1
+					JOIN dbo.e_clReq y1 ON x1.comCode = y1.comCode AND x1.clReqNo = y1.clReqNo
+					WHERE x1.comCode =  @i__logComCode  AND y1.clType = ''일반'' AND x1.Cnt < 0
+					GROUP BY x1.comCode, x1.orderNo, x1.orderSeq
+		 ) cri1 ON a.comCode = cri1.comCode AND a.orderNO = cri1.orderNo AND a.orderSeq = cri1.orderSeq
+--JOIN dbo.e_item i ON rli.comCode = i.comCode AND a.itemId = i.itemId
+JOIN dbo.e_item i ON a.itemId = i.itemId
+LEFT OUTER JOIN dbo.e_orderGroup og ON a.orderGroupId = og.orderGroupId AND a.comCode = og.comCode
+LEFT OUTER JOIN dbo.e_srCust sc ON a.comCode = sc.comCode AND rli.custCode = sc.custCode
+LEFT OUTER JOIN dbo.e_code cd ON cd.comCode = a.comCode AND cd.code = i.makerCode and  mCode = ''1000''
+where  a.clType = ''보험'' AND a.minusClYN=''Y'' AND a.clChnYmd BETWEEN @i__sYmd1 AND @i__eYmd1 AND a.comCode = @i__logComCode AND (cri.clCnt > ISNULL(cri1.clCnt,0) * -1 ) '
+
+--IF @i__custCode <> '' 
+--SET @sql = @sql + N' AND rli.custCode = @i__custCode '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND  rli.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND rli.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND rli.custCode = @i__custCode '
+
+
+IF @i__clType <> ''
+SET @sql = @sql + N' AND a.clType = @i__clType '
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND a.orderGroupId = @i__orderGroupId '
+
+IF @i__carNo  <> ''
+SET @sql = @sql + N' AND og.carNo = @i__carNo '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND a.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND sc.srCode= @i__srCode '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND 
+ ISNULL(Replace(Stuff((SELECT '','' + b.srCode
+                      FROM   dbo.e_srcust b                          
+                      WHERE   b.custcode = og.custcode AND a.comcode = b.comcode
+                      FOR xml path('''')), 1, 1, ''''), '','', '',''),'''') LIKE ''%'' + @i__srCode + ''%'' '
+
+
+INSERT INTO #원장6 (custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,makerCode,ledgCateg,centerPrice	,costPrice,srCode,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50) ,@i__clType varchar(30)  ,@i__orderGroupId varchar(50)
+											,@i__carNo varchar(50) ,@i__itemId bigint ,@i__itemNo varchar(50) ,@i__srCode varchar(50) ,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode, @i__clType ,@i__orderGroupId ,@i__carNo  ,@i__itemId ,@i__itemNo ,@i__srCode ,@i__mainYN ,@mainCustCode
+
+
+--판매출고
+SET @sql = N'
+SELECT 
+	si.plComCode, 
+	si.regYmd,	
+	CASE WHEN si.saleType = ''판매출고'' THEN ''판매출고''
+		WHEN si.saleType = ''반품입고'' THEN ''판매출고(반품입고)''
+		ELSE '''' END,
+	si.saleNo,
+	si.regYmd,
+	si.regHms,
+
+	si.saleSeq,
+	CASE WHEN si.saleType = ''판매출고'' THEN si.qty
+		WHEN si.saleType = ''반품입고'' THEN -si.qty
+		ELSE si.qty END,	
+	ROUND(si.saleUnitPrice,0),	
+	CASE WHEN si.saleType = ''판매출고'' THEN ROUND(si.saleUnitPrice*si.qty,0)
+		WHEN si.saleType = ''반품입고'' THEN ROUND(si.saleUnitPrice*si.qty*-1,0)
+		ELSE  ROUND(si.saleUnitPrice*si.qty,0) END,
+	CASE WHEN si.saleType = ''판매출고'' THEN ROUND(si.saleUnitPrice*si.qty*0.1,0)
+		WHEN si.saleType = ''반품입고'' THEN ROUND(si.saleUnitPrice*si.qty*0.1*-1,0)
+		ELSE  ROUND(si.saleUnitPrice*si.qty*0.1,0) END,
+	CASE WHEN si.saleType = ''판매출고'' THEN ROUND(si.saleUnitPrice*si.qty*1.1,0)
+		WHEN si.saleType = ''반품입고'' THEN ROUND(si.saleUnitPrice*si.qty*1.1*-1,0)
+		ELSE  ROUND(si.saleUnitPrice*si.qty*1.1,0) END,
+ 
+	si.itemId,
+	i.itemNo,
+	ISNULL(i.itemName,i.itemNameEn),
+	tcg.taxBillNo,
+	'''',
+	'''',
+	'''',
+	'''',
+	--si.regUserId,
+	''AUTO'',
+	'''',
+	si.saleType,
+	si.centerPrice,
+	si.costPrice,
+	'''',
+	si.saleNo + ''(saleNo)''
+
+	
+	
+FROM	dbo.e_saleItem   si
+--left outer JOIN dbo.e_item i ON si.itemId = i.itemId AND i.comCode = si.comCode
+JOIN dbo.e_item i ON si.itemId = i.itemId
+LEFT OUTER JOIN dbo.e_taxBillClGroup tcg ON tcg.comCode = si.comCode AND tcg.saleNo = si.saleNo AND tcg.saleSeq = si.saleSeq
+
+WHERE si.comCode = @i__logComCode AND si.regYmd BETWEEN @i__sYmd1 AND @i__eYmd1 '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND si.plComCode = @i__custCode '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND si.plComCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND si.plComCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND si.plComCode = @i__custCode '
+
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND si.itemId = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND i.itemNo = @i__itemNo '
+
+IF @i__srCode <> ''
+SET @sql = @sql + N' AND 1=2 '
+
+IF @i__taxBillRegYN  = 'Y'
+BEGIN
+	SET @sql = @sql + N' AND ISNULL(tcg.taxBillNo,'''') <> '''' '
+END
+ELSE IF @i__taxBillRegYN  = 'N'
+BEGIN
+	SET @sql = @sql + N' AND ISNULL(tcg.taxBillNo,'''') = '''' '
+END
+ELSE
+BEGIN
+	SET @sql = @sql
+END
+
+
+INSERT INTO #원장6 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms 
+									,seq ,cnt ,unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+									,carNo, carType, orderGroupId, clType,regUserId,makerCode,ledgCateg,centerPrice	,costPrice,srCode,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50),@i__itemId bigint ,@i__itemNo varchar(50) 
+							,@i__mainYN varchar(2) ,@mainCustCode varchar(20)', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode,@i__itemId ,@i__itemNo ,@i__mainYN ,@mainCustCode
+
+
+SELECT 
+    a.custCode,
+    cust.custName as custName,    
+    sum(ROUND(sumPrice,0)) sumPrice,
+    sum(ROUND(taxPrice,0)) taxPrice,
+    sum(ROUND(sumPriceTax,0)) sumPriceTax
+FROM #원장6 a
+JOIN dbo.e_cust cust ON a.custCode = cust.custCode and cust.comCode = @i__logComCode
+LEFT OUTER JOIN dbo.e_user u on u.userId = a.regUserId and u.comCode = @i__logComCode
+LEFT OUTER JOIN dbo.e_item c ON  a.itemId = c.itemId
+LEFT OUTER JOIN dbo.e_code d ON d.comCode = @i__logComCode AND d.mCode='1000' AND d.code = c.makerCode
+LEFT OUTER JOIN dbo.e_code d2 ON d2.comCode = @i__logComCode AND d2.mCode='1100' AND d2.code = c.classCode
+WHERE a.ledgType LIKE CASE WHEN @i__ledgType = '' THEN '%' ELSE '%' + @i__ledgType + '%' END
+group by a.custCode, cust.custName
+ORDER BY cust.custName
+             
+DROP TABLE #원장6
+
+RETURN
+/*********************************************************************************************************/
 OUT_LIST:
 
 /*
@@ -1802,7 +2941,80 @@ EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), 
 														,@i__itemId bigint ,@i__itemNo varchar(50)  ,@i__orderGroupId varchar(50), @i__carNo varchar(30) ,@i__custOrderNo varchar(100)', 
 						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode ,@i__placeYmdYN, @i__itemId	,@i__itemNo ,@i__orderGroupId , @i__carNo ,@i__custOrderNo 
 
+--운송비 
+SET @sql = N'
+SELECT 
+	p.custCode, 
+	--placeDmdYmd,
+	ISNULL(p.placeYmd, p.regYmd ) placeDmdYmd,
+	''입고(운송비)'' ledgType,
+	placeNo summary
+	,regYmd
+	, regHms
+	,1 seq
+	,1 cnt
+	,ROUND(directCost/1.1,0) unitPrice
+	,ROUND(directCost /1.1,0) sumPrice
+	,ROUND(directCost /1.1 * 0.1,0) taxPrice
+	,ROUND(directCost,0) sumPriceTax
+	,0 itemId
+	,''운송비'' itemNo
+	,''운송비'' itemName
+	,'''' memo
+	,'''' carNo
+	,'''' carType
+	,'''' orderGroupId
+	,'''' clType
+	,regUserId
+	,ISNULL (p.custOrderNo,'''') makerCode
+	,'''' custOrderNo
+	,''판매출고''　ledgCateg
+	,'''' rcvCustCode
+	,ROUND(directCost,0) centerPrice
+	,'''' orderNo
+	,'''' orderSeq
+	,'''' salePrice
+	,placeNo+''(발주)'' summary2
+FROM dbo.e_place p
+JOIN dbo.e_cust cust ON cust.comCode = p.comCode AND cust.custCode = p.custCode 
+WHERE p.custCode = @i__logComCode AND directYN = ''Y''  AND ISNULL(p.placeYmd, p.regYmd)  BETWEEN @i__sYmd1 AND @i__eYmd1 '
 
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND p.custCode = @i__custCode '
+
+--IF @i__custCode <> ''
+--SET @sql = @sql + N' AND p.custCode = CASE WHEN @i__mainYN = ''Y'' THEN @mainCustCode ELSE @i__custCode END'
+
+IF @i__custCode <> '' AND @i__mainYN = 'Y'
+SET @sql = @sql + N' AND p.custCode IN (SELECT custCode FROM dbo.e_cust WHERE comCode = @i__logComCode AND mainCustCode = @mainCustCode) '
+
+IF @i__custCode <> '' AND @i__mainYN <> 'Y'
+SET @sql = @sql + N' AND p.custCode  = @i__custCode '
+
+
+IF @i__orderGroupId <> ''
+SET @sql = @sql + N' AND '''' = @i__orderGroupId '
+
+IF @i__carNo <> ''
+SET @sql = @sql + N' AND '''' = @i__carNo '
+
+IF @i__custOrderNo  <> ''
+SET @sql = @sql + N' AND p.custOrderNo = @i__custOrderNo '
+
+IF @i__itemId <> ''
+SET @sql = @sql + N' AND 0 = @i__itemId '
+
+IF @i__itemNo <> ''
+SET @sql = @sql + N' AND ''운송비''  = @i__itemNo '
+
+INSERT INTO #원장4 (	custCode, stdYmd ,	  ledgType, summary, regYmd ,regHms ,seq ,cnt ,
+					unitPrice, sumPrice, taxPrice ,  sumPriceTax, itemId ,itemNo ,itemName ,memo
+						,carNo, carType, orderGroupId, clType,regUserId,makerCode,custOrderNo,
+						ledgCateg,rcvCustCode,centerPrice ,orderNo, orderSeq, salePrice,summary2)
+
+EXEC SP_EXECUTESQL  @sql, N'@i__logComCode  varchar(20), @i__sYmd1 varchar(10), @i__eYmd1 varchar(10)    ,@i__custCode varchar(50), @i__placeYmdYN varchar(5)
+														,@i__itemId bigint ,@i__itemNo varchar(50)   ,@i__orderGroupId varchar(50), @i__carNo varchar(30),@i__custOrderNo varchar(100) ', 
+						@i__logComCode, @i__sYmd1 , @i__eYmd1 ,@i__custCode, @i__placeYmdYN ,@i__itemId	,@i__itemNo  ,@i__orderGroupId, @i__carNo ,@i__custOrderNo
 
 
 SELECT distinct 
