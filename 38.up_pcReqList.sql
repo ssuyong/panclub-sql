@@ -208,7 +208,7 @@ SELECT
 		  and prir.rackCode = sr.rackCode
 		where sr.comCode = a.comCode
 		  and pri.pcReqNo = a.pcReqNo--
-		  and sr.stockQty > 0
+		  --and sr.stockQty > 0
 		  and sg.storageCode in (''20250729001'',''20251127001'',''20251203001'',
 								 ''20251224001'',''20260223001'',''20260327001'',
 								 ''20260402001'',''20260416001'',''20260424001'',
@@ -221,10 +221,11 @@ SELECT
                 AND ISNULL(pri.procStep, '''') = ''''
 				) 
 			 OR (ISNULL(prir.pcReqNo,'''') = '''' --거부
-					--AND sr.stockQty > 0
+					AND sr.stockQty > 0
 					AND pri.procStep = ''거부''
 					)
 			 OR (ISNULL(prir.pcReqNo,'''') <> '''' ) --접수
+			        AND prir.rackCode = er.rackCode
 			  )
 		  ) inNamyangjuCount
 FROM  dbo.e_pcReq  a
